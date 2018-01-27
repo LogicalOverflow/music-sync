@@ -1,0 +1,34 @@
+syntax = "proto3";
+package comm;
+
+message Envelope {
+    string type = 1;
+    bytes data = 2;
+}
+
+message TimeSyncRequest {
+    int64 clientSend = 1;
+}
+
+message TimeSyncResponse {
+    int64 clientSendTime = 1;
+    int64 serverRecvTime = 2;
+    int64 serverSendTime = 3;
+}
+
+message QueueSongRequest {
+    int64 startTime = 1;
+    int64 chunkId = 2;
+    repeated double sampleLow = 3 [packed = true];
+    repeated double sampleHigh = 4 [packed = true];
+}
+
+message PingMessage {
+}
+
+message PongMessage {
+}
+
+message SetVolumeRequest {
+    double volume = 1;
+}
