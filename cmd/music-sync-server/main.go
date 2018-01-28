@@ -14,7 +14,7 @@ import (
 	"time"
 )
 
-const usage = "run a music-sync master, controlling salves"
+const usage = "run a music-sync server for clients to connect to"
 
 func main() {
 	app := cmd.NewApp(usage)

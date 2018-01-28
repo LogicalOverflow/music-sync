@@ -10,7 +10,7 @@ import (
 	"os"
 )
 
-const usage = "run a music-sync slave, playing music"
+const usage = "run a music-sync player, which connects to a server and plays music"
 
 func main() {
 	app := cmd.NewApp(usage)
