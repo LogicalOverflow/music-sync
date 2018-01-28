@@ -2,8 +2,6 @@ package playback
 
 import "sync"
 
-// TODO: add tests
-
 type timedSampleQueue struct {
 	buffer []timedSample
 	head   int
