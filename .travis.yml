@@ -1,16 +1,24 @@
 language: go
 sudo: falsee
 go:
-  - 1.9.x
-
+- 1.9.x
 go_import_path: github.com/LogicalOverflow/music-sync
 
 before_install:
-  - go get github.com/mitchellh/gox
+- go get github.com/mitchellh/gox
 
 install:
-  - go get ./...
+- go get ./...
 
 script:
-  - go vet ./...
-  - go test ./...
+- go vet ./...
+- go test ./...
+- gox -output "$TRAVIS_BUILD_DIR/target/{{.Dir}}-{{.OS}}-{{.Arch}}" ./...
+
+deploy:
+  provider: releases
+  api_key:
+    secure: dKE/EU4i5mDhZgH/jbFwI+rCsR9eWlz2aCfP/6FFIewrZYNIqnfeDlyg8+IoVq5hqrr9mAm3ciK1+gPgzOWF9EuIflfoNNuGads1HPf7jUs8oDEYbnozbUfyB3pmN5ft4VPOOatk7wA1JByAzdQtDwDGvbjfWwY+dOR64AUybG6/OQBqpEmOAAkxIAL/jGe6fSN0DQ7KmYab5D9D0550r/8IU9tz5dmFzO2mE9kHO15TaajxXTWtBlYrHKtalySmU/+BPFUuEPhkhf6WVAbamInjjH+L/9uOEyK9vqSdMsnAerdA6Sxu8msT+2xSJxg0uehgERGNbd3hg9bqxjeFxA0ulNDcP5qarvaVUwFhmCOzXjdQpG4fuvJsBePT7Q0g9rPScCWUshej3ro6Ef8/hvmN9Q3DuHCQOqUmSwowpvkTBPq5lFVxRfeLkBkguCzbYxwrqE6jXkCjHbq2j8CNSaj7VC8ZSugzHmlW+seYmqmR0jcag/tVgsm5eb3vAMI8RgCHosPfMndXaV8XGa1tYhv9i33PPzWNPH1aUe8l9cpMKuXbzSZlybYRmSmzkjBUSrAm8Kxh9oIQcPOH+symX9O0ogQyWgEcG9u6ta41/vAmOXF8K5aLs3lb4L1aJez2rShadLhzSRD7bXOMgemiQT59SyP8qN7Y4BfmQ4pRjgI=
+  file: "$TRAVIS_BUILD_DIR/build/*"
+  on:
+    repo: LogicalOverflow/music-sync
