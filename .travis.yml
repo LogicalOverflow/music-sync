@@ -1,14 +1,15 @@
 language: go
 sudo: falsee
 go:
-- 1.9.x
+  - 1.9.x
 go_import_path: github.com/LogicalOverflow/music-sync
 
 before_install:
 - go get github.com/mitchellh/gox
-
+- sudo apt-get -qq update
+- sudo apt-get install -y libasound2-dev
 install:
-- go get ./...
+ - go get ./...
 
 script:
 - go vet ./...
