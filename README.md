@@ -16,8 +16,8 @@ After installing, create a directory named `audio` and put your audio files into
 
 ```json
 {
-	"username": "password",
-	"another username": "another password"
+    "username": "password",
+    "another username": "another password"
  }
 ```
 Then you can start a local music-sync-server using
