@@ -130,7 +130,7 @@ func StartSSH(address string, users map[string]string) {
 	if HostKeyFile == "" {
 		logger.Warnf("no host key file provided, generating a new host key")
 	} else if err := util.CheckFile(HostKeyFile); err != nil {
-		logger.Warnf("unable to access host key file, generation new host key: %v", err)
+		logger.Warnf("unable to access host key file, generating new host key: %v", err)
 	} else {
 		options = append(options, ssh.HostKeyFile(HostKeyFile))
 	}
@@ -144,6 +144,7 @@ func StartSSH(address string, users map[string]string) {
 		}
 	}))
 
+	// TODO: add public key auth support
 	err := ssh.ListenAndServe(address, nil, ssh.PasswordAuth(func(ctx ssh.Context, password string) bool {
 		expected, ok := users[ctx.User()]
 		logger.Infof("ssh login attempt by %s", ctx.User())

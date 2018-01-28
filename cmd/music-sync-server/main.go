@@ -94,7 +94,7 @@ func run(ctx *cli.Context) error {
 
 	ssh.HostKeyFile = sshKeyFile
 	go ssh.StartSSH(sshListen, users)
-	go schedule.Master(sender)
+	go schedule.Server(sender)
 
 	cmd.WaitForInterrupt()
 	return nil

@@ -34,7 +34,6 @@ const (
 
 // TODO: refine logging
 // TODO: check for old commented code
-// TODO: add logging/verbosity command line flags
 
 type LoggingFlag struct {
 	cli.StringFlag

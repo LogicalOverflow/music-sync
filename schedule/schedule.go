@@ -26,11 +26,14 @@ var StreamStartDelay = 5 * time.Second
 var StreamDelay = 15 * time.Second
 var SampleRate = 44100
 
-func Master(sender comm.MessageSender) {
+func Server(sender comm.MessageSender) {
 	playlist := playback.NewPlaylist(SampleRate, []string{}, NanBreakSize)
 	volume := 0.1
-	comm.NewSlaveHandler = func(s comm.MessageSender) {
-		s.SendMessage(&comm.SetVolumeRequest{Volume: volume})
+	comm.NewSlaveHandler = func(c comm.Channel, s comm.MessageSender) {
+		switch c {
+		case comm.Channel_AUDIO:
+			s.SendMessage(&comm.SetVolumeRequest{Volume: volume})
+		}
 	}
 
 	go playlist.StreamLoop()
@@ -45,7 +48,7 @@ func Master(sender comm.MessageSender) {
 
 			playlist.Fill(low, high)
 
-			sender.SendMessage(&comm.QueueSongRequest{
+			sender.SendMessage(&comm.QueueChunkRequest{
 				StartTime:  start + int64(index)*int64(StreamChunkTime/time.Nanosecond),
 				ChunkId:    index,
 				SampleLow:  low,
@@ -191,7 +194,7 @@ func Master(sender comm.MessageSender) {
 	})
 }
 
-func Slave(sender comm.MessageSender) {
+func Player(sender comm.MessageSender) {
 	go func() {
 		if err := playback.Init(SampleRate); err != nil {
 			logger.Fatalf("failed to initialized playback: %v", err)
@@ -203,6 +206,13 @@ func Slave(sender comm.MessageSender) {
 		SyncTime(sender)
 		for range time.Tick(TimeSyncInterval) {
 			SyncTime(sender)
+		}
+	}()
+
+	go func() {
+		if err := sender.SendMessage(&comm.SubscribeChannelRequest{Channel: comm.Channel_AUDIO}); err != nil {
+			logger.Errorf("failed to subscribe to audio channel")
+			os.Exit(1)
 		}
 	}()
 }

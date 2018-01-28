@@ -23,7 +23,7 @@ func HandleConnection(conn net.Conn, h PackageHandler) {
 	}
 }
 
-var NewSlaveHandler func(conn MessageSender)
+var NewSlaveHandler func(channel Channel, conn MessageSender)
 
 func StartServer(address string) (MessageSender, error) {
 	logger.Infof("starting server at %s", address)
@@ -34,9 +34,9 @@ func StartServer(address string) (MessageSender, error) {
 		return nil, fmt.Errorf("failed to start server at %s: %v", address, err)
 	}
 	logger.Infof("server running at %s", address)
-	mms := &multiMessageSender{connections: make([]net.Conn, 0)}
+	mms := &multiMessageSender{connections: make([]net.Conn, 0), channels: make(map[net.Conn][]Channel)}
 	go func() {
-		h := NewMasterPackageHandler()
+		h := NewMasterPackageHandler(mms)
 		for {
 			conn, err := l.Accept()
 			if err != nil {
@@ -48,7 +48,7 @@ func StartServer(address string) (MessageSender, error) {
 				mms.DelConn(conn)
 			}(conn)
 			if NewSlaveHandler != nil {
-				go NewSlaveHandler(&singleMessageSender{conn})
+				go NewSlaveHandler(-1, &singleMessageSender{conn})
 			}
 		}
 	}()

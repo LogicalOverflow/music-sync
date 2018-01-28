@@ -16,7 +16,7 @@ message TimeSyncResponse {
     int64 serverSendTime = 3;
 }
 
-message QueueSongRequest {
+message QueueChunkRequest {
     int64 startTime = 1;
     int64 chunkId = 2;
     repeated double sampleLow = 3 [packed = true];
@@ -31,4 +31,14 @@ message PongMessage {
 
 message SetVolumeRequest {
     double volume = 1;
+}
+
+message SubscribeChannelRequest {
+    Channel channel = 1;
+}
+
+enum Channel {
+    AUDIO = 0;
+    META = 1;
+    LYRICS = 2;
 }

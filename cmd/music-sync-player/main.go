@@ -44,7 +44,7 @@ func run(ctx *cli.Context) error {
 		cli.NewExitError(err, 1)
 	}
 
-	go schedule.Slave(sender)
+	go schedule.Player(sender)
 
 	cmd.WaitForInterrupt()
 	return nil

@@ -14,6 +14,15 @@ import (
 
 const zlibLevel = 5
 
+func channelOf(m proto.Message) (Channel, bool) {
+	switch m.(type) {
+	case *QueueChunkRequest, *SetVolumeRequest:
+		return Channel_AUDIO, true
+	default:
+		return -1, false
+	}
+}
+
 func toWire(m proto.Message) ([]byte, error) {
 	inner, err := proto.Marshal(m)
 	if err != nil {

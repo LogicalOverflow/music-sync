@@ -1,0 +1,16 @@
+language: go
+sudo: falsee
+go:
+  - 1.9.x
+
+go_import_path: github.com/LogicalOverflow/music-sync
+
+before_install:
+  - go get github.com/mitchellh/gox
+
+install:
+  - go get ./..
+
+script:
+  - go vet ./..
+  - go test ./..
