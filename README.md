@@ -6,7 +6,7 @@
 [![License](https://img.shields.io/github/license/LogicalOverflow/music-sync.svg?style=flat-square)](https://github.com/LogicalOverflow/music-sync/blob/master/LICENSE)
 
 # Music Sync
-A go-based application to play the same music from multiple devices at once. It works best when all playing devices are similar, to avoid differences in the time it takes the audio to be played. I usually test the timing with two Windows 7 machines, one amd64, one 386 to ensure the timing difference between the devices is small enough that hearing 2 different devices playing music sounds like one.
+A go application to play the same music from multiple devices at once. It works best when all playing devices are similar, to avoid differences in the time it takes the audio to be played. I usually test the timing with two Windows 7 machines, one amd64, one 386 to ensure the timing difference between the devices is small enough that hearing 2 different devices playing music sounds like one.
 
 ## Installation
 To install do `go get github.com/LogicalOverflow/music-sync/...` or download the executable from the [latest release](https://github.com/LogicalOverflow/music-sync/releases/latest).
