@@ -143,6 +143,9 @@ func TestAddRemoveAsync(t *testing.T) {
 		}
 	}()
 
+	wg.Wait()
+	assert.True(t, q.empty(), "after async adding and removing %d elements while first filling, queue did not claim to be empty", 4*testQueueSize)
+
 	q = newTestQueue()
 	wg.Add(2)
 	go func() {
@@ -164,6 +167,7 @@ func TestAddRemoveAsync(t *testing.T) {
 	}()
 
 	wg.Wait()
+	assert.True(t, q.empty(), "after async adding and removing %d elements while first removing, queue did not claim to be empty", 4*testQueueSize)
 }
 
 func newTestQueue() *timedSampleQueue {
