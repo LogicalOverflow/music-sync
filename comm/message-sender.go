@@ -9,7 +9,10 @@ import (
 	"github.com/golang/protobuf/proto"
 )
 
+// MessageSender is an interface used to send protobuf messages to clients/the server.
 type MessageSender interface {
+	// Sends a message to the server/all clients.
+	// This method respects subscribe message from clients.
 	SendMessage(m proto.Message) error
 }
 

@@ -1,3 +1,4 @@
+// Package ssh contains the ssh control interface
 package ssh
 
 import (
@@ -12,10 +13,13 @@ import (
 	"strings"
 )
 
+// HostKeyFile is the path to the host key to use for the ssh control interface
 var HostKeyFile string
 
 var logger = log.GetLogger("ssh")
 
+// ReadUsersFile reads a json file containing all users and passwords allowed to access the ssh control interface
+// It returns a dictionary user->password
 func ReadUsersFile(filename string) (map[string]string, error) {
 	f, err := os.Open(filename)
 	if err != nil {
@@ -28,6 +32,8 @@ func ReadUsersFile(filename string) (map[string]string, error) {
 	return users, nil
 }
 
+// StartSSH starts the ssh control interface on listening on address and accepting all users with the respective
+// passwords in the users dict (user->password)
 func StartSSH(address string, users map[string]string) {
 	ssh.Handle(func(s ssh.Session) {
 		defer s.Close()
@@ -138,10 +144,9 @@ func StartSSH(address string, users map[string]string) {
 		expected, ok := users[ctx.User()]
 		if ok && expected == password {
 			return true
-		} else {
-			logger.Warnf("failed ssh login attempt from %s as %s", ctx.RemoteAddr(), ctx.User())
-			return false
 		}
+		logger.Warnf("failed ssh login attempt from %s as %s", ctx.RemoteAddr(), ctx.User())
+		return false
 	}))
 
 	// TODO: add public key auth support

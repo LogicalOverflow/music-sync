@@ -1,3 +1,4 @@
+// Package schedule contains methods to start different types of clients/servers
 package schedule
 
 import (
@@ -16,20 +17,30 @@ import (
 
 var logger = log.GetLogger("shed")
 
+// TimeSyncInterval is the time interval between syncing time to server
 var TimeSyncInterval = 10 * time.Minute
+// TimeSyncCycles is the number of cycles used to sync time to server
 var TimeSyncCycles = 500
+// TimeSyncCycleDelay is the delay between cycles in one time sync
 var TimeSyncCycleDelay = 10 * time.Millisecond
+// StreamChunkSize is the size of one stream chunk in samples
 var StreamChunkSize = 44100 * 4
+// StreamChunkTime is the duration is takes to play one stream chunk
 var StreamChunkTime = 4 * time.Second
+// NanBreakSize is the number of nan-samples to insert between songs, which players use to realign playback
 var NanBreakSize = 44100 * 1
+// StreamStartDelay is the delay before starting the stream
 var StreamStartDelay = 5 * time.Second
+// StreamDelay is the delay of the stream, which players use to decode chunks
 var StreamDelay = 15 * time.Second
+// SampleRate is the sample rate of the stream
 var SampleRate = 44100
 
+// Server starts a music-sync server, using sender to communicate with all clients
 func Server(sender comm.MessageSender) {
 	playlist := playback.NewPlaylist(SampleRate, []string{}, NanBreakSize)
 	volume := 0.1
-	comm.NewSlaveHandler = func(c comm.Channel, s comm.MessageSender) {
+	comm.NewClientHandler = func(c comm.Channel, s comm.MessageSender) {
 		switch c {
 		case comm.Channel_AUDIO:
 			s.SendMessage(&comm.SetVolumeRequest{Volume: volume})
@@ -70,11 +81,11 @@ func Server(sender comm.MessageSender) {
 			if len(args) == 1 {
 				playlist.AddSong(song)
 			} else {
-				if pos, err := strconv.Atoi(args[1]); err != nil {
+				pos, err := strconv.Atoi(args[1])
+				if err != nil {
 					return "", false
-				} else {
-					playlist.InsertSong(song, pos)
 				}
+				playlist.InsertSong(song, pos)
 			}
 			return fmt.Sprintf("song %s added to playlist", song), true
 		},
@@ -169,9 +180,8 @@ func Server(sender comm.MessageSender) {
 			}
 			if err := sender.SendMessage(&comm.SetVolumeRequest{Volume: volume}); err != nil {
 				return fmt.Sprintf("failed to set volume to %.3f: %v", volume, err), true
-			} else {
-				return fmt.Sprintf("setting volume to %.3f", volume), true
 			}
+			return fmt.Sprintf("setting volume to %.3f", volume), true
 		},
 	})
 	ssh.RegisterCommand(ssh.Command{
@@ -194,6 +204,7 @@ func Server(sender comm.MessageSender) {
 	})
 }
 
+// Player starts a music-sync player, using sender to communicate with the server
 func Player(sender comm.MessageSender) {
 	go func() {
 		if err := playback.Init(SampleRate); err != nil {
@@ -203,9 +214,9 @@ func Player(sender comm.MessageSender) {
 	}()
 
 	go func() {
-		SyncTime(sender)
+		syncTime(sender)
 		for range time.Tick(TimeSyncInterval) {
-			SyncTime(sender)
+			syncTime(sender)
 		}
 	}()
 
@@ -217,7 +228,7 @@ func Player(sender comm.MessageSender) {
 	}()
 }
 
-func SyncTime(sender comm.MessageSender) {
+func syncTime(sender comm.MessageSender) {
 	logger.Debugf("syncing time")
 	timing.ResetOffsets(TimeSyncCycles)
 	for i := 0; i < TimeSyncCycles; i++ {

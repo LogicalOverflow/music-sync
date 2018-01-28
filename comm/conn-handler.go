@@ -1,3 +1,4 @@
+// Package comm contains functions and types from communication between music-sync clients and the server
 package comm
 
 import (
@@ -7,11 +8,11 @@ import (
 	"os"
 )
 
-type PackageHandler interface {
+type packageHandler interface {
 	Handle(message proto.Message, sender net.Conn)
 }
 
-func HandleConnection(conn net.Conn, h PackageHandler) {
+func handleConnection(conn net.Conn, h packageHandler) {
 	defer conn.Close()
 	for {
 		m, err := readWire(conn)
@@ -23,8 +24,12 @@ func HandleConnection(conn net.Conn, h PackageHandler) {
 	}
 }
 
-var NewSlaveHandler func(channel Channel, conn MessageSender)
+// NewClientHandler is called when a new client connects to the server (with channel -1)
+// and when a client subscribes to a channel.
+var NewClientHandler func(channel Channel, conn MessageSender)
 
+// StartServer starts a music-sync server listening at address and returns a MessageSender to broadcast
+// to clients
 func StartServer(address string) (MessageSender, error) {
 	logger.Infof("starting server at %s", address)
 
@@ -36,7 +41,7 @@ func StartServer(address string) (MessageSender, error) {
 	logger.Infof("server running at %s", address)
 	mms := &multiMessageSender{connections: make([]net.Conn, 0), channels: make(map[net.Conn][]Channel)}
 	go func() {
-		h := NewMasterPackageHandler(mms)
+		h := newMasterPackageHandler(mms)
 		for {
 			conn, err := l.Accept()
 			if err != nil {
@@ -44,11 +49,11 @@ func StartServer(address string) (MessageSender, error) {
 			}
 			go func(conn net.Conn) {
 				mms.AddConn(conn)
-				HandleConnection(conn, h)
+				handleConnection(conn, h)
 				mms.DelConn(conn)
 			}(conn)
-			if NewSlaveHandler != nil {
-				go NewSlaveHandler(-1, &singleMessageSender{conn})
+			if NewClientHandler != nil {
+				go NewClientHandler(-1, &singleMessageSender{conn})
 			}
 		}
 	}()
@@ -56,7 +61,8 @@ func StartServer(address string) (MessageSender, error) {
 	return mms, nil
 }
 
-func ConnectToMaster(master string) (MessageSender, error) {
+// ConnectToServer connects to the server at server and returns a MessageSender to communicate with the master
+func ConnectToServer(master string) (MessageSender, error) {
 	logger.Infof("connecting to master at %s", master)
 	conn, err := net.Dial("tcp", master)
 	if err != nil {
@@ -65,7 +71,7 @@ func ConnectToMaster(master string) (MessageSender, error) {
 	}
 	logger.Infof("connected to master at %s", master)
 	go func() {
-		HandleConnection(conn, NewSlavePackageHandler())
+		handleConnection(conn, newSlavePackageHandler())
 		logger.Fatalf("connection to master closed")
 		os.Exit(1)
 	}()

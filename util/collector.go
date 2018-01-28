@@ -2,12 +2,14 @@ package util
 
 import "sync"
 
+// ErrorCollector is a thread save utility class to collect multiple errors into one slice
 type ErrorCollector struct {
 	errs      []error
 	errsMutex sync.RWMutex
 	wg        sync.WaitGroup
 }
 
+// Add adds an error to the ErrorCollector
 func (ec *ErrorCollector) Add(err error) {
 	ec.wg.Add(1)
 	go func() {
@@ -22,10 +24,13 @@ func (ec *ErrorCollector) Add(err error) {
 	}()
 }
 
+// Wait waits for all pending error insertions to complete
 func (ec *ErrorCollector) Wait() {
 	ec.wg.Wait()
 }
 
+// Err returns an MultiError containing all errors added using Add, with baseMessage as base message
+// If no errors were added, it returns nil
 func (ec *ErrorCollector) Err(baseMessage string) error {
 	ec.Wait()
 	ec.errsMutex.RLock()

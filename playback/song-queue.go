@@ -1,3 +1,4 @@
+// Package playback contains functions and types to stream and play audio
 package playback
 
 import (
@@ -16,15 +17,16 @@ import (
 var (
 	player     *oto.Player
 	format     beep.Format
-	streamer   *TimedMultiStreamer
+	streamer   *timedMultiStreamer
 	bufferSize int
 	volume     float64
 )
 
 var logger = log.GetLogger("play")
+// AudioDir is the directory containing the audio file
 var AudioDir string
 
-func GetStreamer(filename string) (beep.Streamer, error) {
+func getStreamer(filename string) (beep.Streamer, error) {
 	filename = path.Join(AudioDir, filename)
 	f, err := os.Open(filename)
 	if err != nil {
@@ -39,18 +41,21 @@ func GetStreamer(filename string) (beep.Streamer, error) {
 	return s, nil
 }
 
-func QueueSong(startTime int64, chunkId int64, samples [][2]float64) {
+// QueueChunk queue a chunk for playback
+func QueueChunk(startTime int64, chunkID int64, samples [][2]float64) {
 	if streamer == nil {
-		logger.Infof("not queuing chunk %d: streamer not ready", chunkId)
+		logger.Infof("not queuing chunk %d: streamer not ready", chunkID)
 		return
 	}
-	logger.Debugf("queueing chunk %d at %d", chunkId, startTime)
+	logger.Debugf("queueing chunk %d at %d", chunkID, startTime)
 
-	q := NewQueuedStream(startTime, samples)
+	q := newQueuedStream(startTime, samples)
 	streamer.chunks = append(streamer.chunks, q)
-	logger.Debugf("chunk %d queued at %d", chunkId, startTime)
+	logger.Debugf("chunk %d queued at %d", chunkID, startTime)
 }
 
+// CombineSamples combines to []float64 to one [][2]float64,
+// such that low[i] == returned[i][0] and high[i] == returned[i][1]
 func CombineSamples(low []float64, high []float64) ([][2]float64) {
 	e := len(low)
 	if len(high) < e {
@@ -63,6 +68,7 @@ func CombineSamples(low []float64, high []float64) ([][2]float64) {
 	return s
 }
 
+// Init prepares a player for playback with the given sample rate
 func Init(sampleRate int) error {
 	logger.Infof("initializing playback")
 	var err error
@@ -84,10 +90,10 @@ func Init(sampleRate int) error {
 	}
 	player.SetUnderrunCallback(func() { logger.Warn("player is underrunning") })
 
-	streamer = &TimedMultiStreamer{
+	streamer = &timedMultiStreamer{
 		format:         format,
-		streamers:      make([]*QueuedStream, 0),
-		chunks:         make([]*QueuedStream, 0),
+		streamers:      make([]*queuedStream, 0),
+		chunks:         make([]*queuedStream, 0),
 		background:     beep.Silence(-1),
 		offset:         0,
 		sampleDuration: int64(format.SampleRate.D(1) / time.Nanosecond),
@@ -105,6 +111,7 @@ func Init(sampleRate int) error {
 	return nil
 }
 
+// SetVolume sets the playback volume of the player
 func SetVolume(v float64) {
 	volume = v
 	logger.Infof("volume set to %.3f", v)

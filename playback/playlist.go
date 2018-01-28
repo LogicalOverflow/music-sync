@@ -5,6 +5,8 @@ import (
 	"sync"
 )
 
+// Playlist is a array of songs, which can then be streamed.
+// After reaching the end of the playlist, playback will resume at the start.
 type Playlist struct {
 	songs        []string
 	songsMutex   sync.RWMutex
@@ -17,6 +19,8 @@ type Playlist struct {
 	currentSong  string
 }
 
+// StreamLoop reads the samples of the song into the internal buffer.
+// This method blocks forever and must be called exactly once before streaming from the playlist.
 func (pl *Playlist) StreamLoop() {
 	for {
 		pl.songsMutex.RLock()
@@ -36,7 +40,7 @@ func (pl *Playlist) StreamLoop() {
 
 		pl.currentSong = filename
 
-		s, err := GetStreamer(filename)
+		s, err := getStreamer(filename)
 		if err != nil {
 			logger.Warnf("skipping song %s in playlist: %v", filename, err)
 		}
@@ -75,15 +79,18 @@ func (pl *Playlist) StreamLoop() {
 	}
 }
 
+// SetPos jumps to the song at pos.
 func (pl *Playlist) SetPos(pos int) {
 	pl.position = pos
 	pl.forceNext <- true
 }
 
+// Pos returns the position of the song currently being played.
 func (pl *Playlist) Pos() int {
 	return pl.position
 }
 
+// Songs returns all songs in the playlist.
 func (pl *Playlist) Songs() []string {
 	pl.songsMutex.RLock()
 	defer pl.songsMutex.RUnlock()
@@ -92,12 +99,15 @@ func (pl *Playlist) Songs() []string {
 	return r
 }
 
+// AddSong adds a song at the end of the playlist.
 func (pl *Playlist) AddSong(song string) {
 	pl.songsMutex.Lock()
 	defer pl.songsMutex.Unlock()
 	pl.songs = append(pl.songs, song)
 }
 
+// InsertSong inserts a song into the playlist.
+// The index is clipped to the bounds of the playlist.
 func (pl *Playlist) InsertSong(song string, index int) {
 	pl.songsMutex.Lock()
 	defer pl.songsMutex.Unlock()
@@ -113,9 +123,15 @@ func (pl *Playlist) InsertSong(song string, index int) {
 	}
 }
 
+// RemoveSong remove the song at index from the playlist and returns the removed song.
+// The index is clipped to the bounds of the playlist.
+// If the playlist is empty, noting happens and "" is returned.
 func (pl *Playlist) RemoveSong(index int) string {
 	pl.songsMutex.Lock()
 	defer pl.songsMutex.Unlock()
+	if len(pl.songs) == 0 {
+		return ""
+	}
 	if index < 0 {
 		index = 0
 	}
@@ -132,6 +148,7 @@ func (pl *Playlist) RemoveSong(index int) string {
 	return removed
 }
 
+// Fill reads the samples from the internal buffer and fills low and high with them.
 func (pl *Playlist) Fill(low []float64, high []float64) {
 	var wg sync.WaitGroup
 	wg.Add(2)
@@ -140,18 +157,23 @@ func (pl *Playlist) Fill(low []float64, high []float64) {
 	wg.Wait()
 }
 
+// Playing returns true if the playlist is currently playing audio.
 func (pl *Playlist) Playing() bool {
 	return pl.playing
 }
 
+// SetPlaying can set whether or not the playlist should be playing audio.
 func (pl *Playlist) SetPlaying(p bool) {
 	pl.playing = p
 }
 
+// CurrentSong returns the song currently being played
 func (pl *Playlist) CurrentSong() string {
 	return pl.currentSong
 }
 
+// NewPlaylist create a new playlist with the given buffer size and songs in it, which
+// inserts nanBreakSize nan-samples between songs, which players use to realign playback.
 func NewPlaylist(bufferSize int, songs []string, nanBreakSize int) *Playlist {
 	return &Playlist{
 		songs:        songs,

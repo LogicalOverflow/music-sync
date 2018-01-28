@@ -1,3 +1,4 @@
+// Package util contains utility types and functions
 package util
 
 import (
@@ -7,6 +8,7 @@ import (
 	"strings"
 )
 
+// ListAllSongs recursively lists all songs (files) in songsDir/subDir
 func ListAllSongs(songsDir string, subDir string) ([]string) {
 	songs := make([]string, 0)
 	dir := songsDir
@@ -28,6 +30,7 @@ func ListAllSongs(songsDir string, subDir string) ([]string) {
 	return songs
 }
 
+// ListAllSubDirs recursively lists all directories in dir
 func ListAllSubDirs(dir string) []string {
 	dirs := make([]string, 0)
 	filepath.Walk(dir, func(path string, f os.FileInfo, err error) error {
@@ -45,6 +48,7 @@ func ListAllSubDirs(dir string) []string {
 	return dirs
 }
 
+// CheckDir checks whether a directory exists and is in fact a directory (returns an error if that is not the case)
 func CheckDir(p string) error {
 	fi, err := os.Stat(p)
 	if err != nil {
@@ -56,6 +60,7 @@ func CheckDir(p string) error {
 	return nil
 }
 
+// CheckFile checks whether a file exists and is in fact a file (returns an error if that is not the case)
 func CheckFile(p string) error {
 	fi, err := os.Stat(p)
 	if err != nil {

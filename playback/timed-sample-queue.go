@@ -56,9 +56,8 @@ func (q *timedSampleQueue) Len() int {
 	defer q.headMutex.RUnlock()
 	if q.tail <= q.head {
 		return q.head - q.tail
-	} else {
-		return q.head - q.tail + 2*len(q.buffer)
 	}
+	return q.head - q.tail + 2*len(q.buffer)
 }
 
 func (q *timedSampleQueue) Cap() int {

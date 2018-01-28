@@ -12,10 +12,10 @@ type timedSample struct {
 	time   int64
 }
 
-type TimedMultiStreamer struct {
+type timedMultiStreamer struct {
 	format         beep.Format
-	streamers      []*QueuedStream
-	chunks         []*QueuedStream
+	streamers      []*queuedStream
+	chunks         []*queuedStream
 	background     beep.Streamer
 	offset         int64
 	sampleDuration int64
@@ -24,7 +24,7 @@ type TimedMultiStreamer struct {
 	syncing        bool
 }
 
-func (tms *TimedMultiStreamer) Stream(samples [][2]float64) {
+func (tms *timedMultiStreamer) Stream(samples [][2]float64) {
 	var n int
 	var drained bool
 	now := timing.GetSyncedTime()
@@ -44,19 +44,18 @@ func (tms *TimedMultiStreamer) Stream(samples [][2]float64) {
 	}
 }
 
-func (tms *TimedMultiStreamer) StreamDirect(samples [][2]float64) (n int, drained bool) {
+func (tms *timedMultiStreamer) StreamDirect(samples [][2]float64) (n int, drained bool) {
 	for i := range samples {
 		s, _ := tms.samples.Remove()
 		if math.IsNaN(s[0]) {
 			return i, true
-		} else {
-			samples[i] = s
 		}
+		samples[i] = s
 	}
 	return len(samples), false
 }
 
-func (tms *TimedMultiStreamer) StreamSync(samples [][2]float64, now int64) (n int, drained bool) {
+func (tms *timedMultiStreamer) StreamSync(samples [][2]float64, now int64) (n int, drained bool) {
 	s, t := tms.samples.Peek()
 	for math.IsNaN(s[0]) {
 		tms.samples.Remove()
@@ -78,7 +77,7 @@ func (tms *TimedMultiStreamer) StreamSync(samples [][2]float64, now int64) (n in
 	}
 }
 
-func (tms *TimedMultiStreamer) ReadChunks() {
+func (tms *timedMultiStreamer) ReadChunks() {
 	for {
 		if 0 < len(tms.chunks) {
 			st := tms.chunks[0].startTime
@@ -92,24 +91,24 @@ func (tms *TimedMultiStreamer) ReadChunks() {
 	}
 }
 
-func (tms *TimedMultiStreamer) samplesDuration(n int) int64 {
+func (tms *timedMultiStreamer) samplesDuration(n int) int64 {
 	return int64(tms.format.SampleRate.D(n) / time.Nanosecond)
 }
 
-func (tms *TimedMultiStreamer) samplesCount(n int64) int {
+func (tms *timedMultiStreamer) samplesCount(n int64) int {
 	return tms.format.SampleRate.N(time.Duration(n) * time.Nanosecond)
 }
 
-func (tms *TimedMultiStreamer) Err() error { return nil }
+func (tms *timedMultiStreamer) Err() error { return nil }
 
-type QueuedStream struct {
+type queuedStream struct {
 	startTime int64
 	samples   [][2]float64
 	sampleN   int
 	pos       int
 }
 
-func (q *QueuedStream) copySamples(target [][2]float64) (n int) {
+func (q *queuedStream) copySamples(target [][2]float64) (n int) {
 	if q.sampleN <= q.pos {
 		return 0
 	}
@@ -119,10 +118,10 @@ func (q *QueuedStream) copySamples(target [][2]float64) (n int) {
 	return
 }
 
-func (q *QueuedStream) drained() bool {
+func (q *queuedStream) drained() bool {
 	return q.sampleN <= q.pos
 }
 
-func NewQueuedStream(startTime int64, samples [][2]float64) *QueuedStream {
-	return &QueuedStream{startTime: startTime, samples: samples, sampleN: len(samples)}
+func newQueuedStream(startTime int64, samples [][2]float64) *queuedStream {
+	return &queuedStream{startTime: startTime, samples: samples, sampleN: len(samples)}
 }

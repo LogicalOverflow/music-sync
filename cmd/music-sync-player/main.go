@@ -15,8 +15,8 @@ func main() {
 	app := cmd.NewApp(usage)
 	app.Action = run
 	app.Flags = cmd.AddLoggingFlags([]cli.Flag{
-		cmd.MasterAddressFlag,
-		cmd.MasterPortFlag,
+		cmd.ServerAddressFlag,
+		cmd.ServerPortFlag,
 
 		cmd.SampleRateFlag,
 	})
@@ -30,16 +30,16 @@ func main() {
 func run(ctx *cli.Context) error {
 	cmd.HandleLoggingFlags(ctx)
 	var (
-		masterAddress = ctx.String(cmd.FlagKey(cmd.MasterAddressFlag))
-		masterPort    = ctx.Int(cmd.FlagKey(cmd.MasterPortFlag))
+		serverAddress = ctx.String(cmd.FlagKey(cmd.ServerAddressFlag))
+		serverPort    = ctx.Int(cmd.FlagKey(cmd.ServerPortFlag))
 
 		sampleRate = ctx.Int(cmd.FlagKey(cmd.SampleRateFlag))
 	)
 
 	schedule.SampleRate = sampleRate
 
-	master := fmt.Sprintf("%s:%d", masterAddress, masterPort)
-	sender, err := comm.ConnectToMaster(master)
+	server := fmt.Sprintf("%s:%d", serverAddress, serverPort)
+	sender, err := comm.ConnectToServer(server)
 	if err != nil {
 		cli.NewExitError(err, 1)
 	}
