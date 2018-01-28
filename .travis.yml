@@ -24,3 +24,4 @@ deploy:
   file: "$TRAVIS_BUILD_DIR/build/*"
   on:
     repo: LogicalOverflow/music-sync
+  skip_cleanup: true
