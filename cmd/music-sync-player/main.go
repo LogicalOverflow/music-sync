@@ -1,3 +1,4 @@
+// This package is the main package of the music-sync player
 package main
 
 import (
