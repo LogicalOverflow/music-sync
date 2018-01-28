@@ -12,12 +12,20 @@ A go-based application to play the same music from multiple devices at once. It 
 To install do `go get github.com/LogicalOverflow/music-sync/...` or download the executable from the [latest release](https://github.com/LogicalOverflow/music-sync/releases/latest).
 
 ## Getting Started
-After installing, create a directory named `audio` and put your audio files into it. Then you can start a local music-sync-server using
+After installing, create a directory named `audio` and put your audio files into it. Also, create a `users.json` containing at least one username and password of your choice:
+
+```json
+{
+	"username": "password",
+	"another username": "another password"
+ }
+```
+Then you can start a local music-sync-server using
 `music-sync-server`. By default, this server listens on `127.0.0.1:13333` (`--address`, `--port`) for clients and provides a ssh terminal on `127.0.0.1:13334` (`--ssh-address`, `--ssh-port`) to control the server. By default, the server checks in it's working directory for a file called `id_rsa` to use as a host key (`--host-key-file`). If this file is not found a new host key is generated on every startup. For more options check `music-sync-server --help`.
 
 To start a player use `music-sync-player`. By default this tries to connect to a server at `127.0.0.1:1333` (`--address`, `--port`). For more options check `music-sync-player --help`.
 
-The ssh terminal on the server is used to control the server. You can manage the current playlist, pause and resume playback and set the playback volume for all clients. Theses commands are avilable:
+The ssh terminal on the server is used to control the server. The usernames and passwords are read from `users.json` (`--users-file`). You can manage the current playlist, pause and resume playback and set the playback volume for all clients. Theses commands are avilable:
  * `queue filename [position]` - Adds filename to the playlist at position or the end.
  * `remove position` - Removes the song at position from the playlist
  * `jump position` - Jumps to position in the playlist, interrupting the current song
