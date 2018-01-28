@@ -25,4 +25,5 @@ deploy:
   file: build/*
   on:
     repo: LogicalOverflow/music-sync
+    tags: true
   skip_cleanup: true
