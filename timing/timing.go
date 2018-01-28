@@ -49,6 +49,6 @@ func UpdateOffset(clientSend, serverRecv, serverSend, clientRecv int64) {
 		avg = new(big.Int).Div(avg, big.NewInt(int64(len(offsets))))
 		offset = avg.Int64()
 		offsetsMutex.Unlock()
-		logger.Debugf("time synced: offset: %d", offset)
+		logger.Infof("time synced: offset: %d", offset)
 	}
 }

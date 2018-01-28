@@ -49,6 +49,13 @@ func Server(sender comm.MessageSender) {
 
 	go playlist.StreamLoop()
 
+	playlist.SetNewSongHandler(func(startSampleIndex uint64, filename string) {
+		sender.SendMessage(&comm.NewSongInfo{
+			FirstSampleOfSongIndex: startSampleIndex,
+			SongFileName:           filename,
+		})
+	})
+
 	go func() {
 		time.Sleep(StreamStartDelay)
 		start := timing.GetSyncedTime() + int64(StreamDelay/time.Nanosecond)
@@ -57,13 +64,19 @@ func Server(sender comm.MessageSender) {
 			low := make([]float64, StreamChunkSize)
 			high := make([]float64, StreamChunkSize)
 
-			playlist.Fill(low, high)
+			firstSampleIndex := playlist.Fill(low, high)
 
-			sender.SendMessage(&comm.QueueChunkRequest{
-				StartTime:  start + int64(index)*int64(StreamChunkTime/time.Nanosecond),
-				ChunkId:    index,
-				SampleLow:  low,
-				SampleHigh: high,
+			go sender.SendMessage(&comm.QueueChunkRequest{
+				StartTime:        start + int64(index)*int64(StreamChunkTime/time.Nanosecond),
+				ChunkId:          index,
+				SampleLow:        low,
+				SampleHigh:       high,
+				FirstSampleIndex: firstSampleIndex,
+			})
+			go sender.SendMessage(&comm.ChunkInfo{
+				StartTime:        start + int64(index)*int64(StreamChunkTime/time.Nanosecond),
+				FirstSampleIndex: firstSampleIndex,
+				ChunkSize:        uint64(StreamChunkSize),
 			})
 			index++
 		}
@@ -228,8 +241,25 @@ func Player(sender comm.MessageSender) {
 	}()
 }
 
+// Infoer start a music-sync client in infoer mode, using sender to communicate with the server
+func Infoer(sender comm.MessageSender) {
+	go func() {
+		syncTime(sender)
+		for range time.Tick(TimeSyncInterval) {
+			syncTime(sender)
+		}
+	}()
+
+	go func() {
+		if err := sender.SendMessage(&comm.SubscribeChannelRequest{Channel: comm.Channel_META}); err != nil {
+			logger.Errorf("failed to subscribe to meta channel")
+			os.Exit(1)
+		}
+	}()
+}
+
 func syncTime(sender comm.MessageSender) {
-	logger.Debugf("syncing time")
+	logger.Infof("syncing time")
 	timing.ResetOffsets(TimeSyncCycles)
 	for i := 0; i < TimeSyncCycles; i++ {
 		if err := sender.SendMessage(&comm.TimeSyncRequest{ClientSend: timing.GetRawTime()}); err != nil {

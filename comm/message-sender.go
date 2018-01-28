@@ -43,6 +43,9 @@ func (mms *multiMessageSender) SendMessage(m proto.Message) error {
 		}(c)
 	}
 
+	wg.Wait()
+	errCol.Wait()
+
 	return errCol.Err("failed to send to %d clients: ")
 }
 

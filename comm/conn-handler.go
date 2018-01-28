@@ -41,7 +41,7 @@ func StartServer(address string) (MessageSender, error) {
 	logger.Infof("server running at %s", address)
 	mms := &multiMessageSender{connections: make([]net.Conn, 0), channels: make(map[net.Conn][]Channel)}
 	go func() {
-		h := newMasterPackageHandler(mms)
+		h := newServerPackageHandler(mms)
 		for {
 			conn, err := l.Accept()
 			if err != nil {
@@ -62,7 +62,7 @@ func StartServer(address string) (MessageSender, error) {
 }
 
 // ConnectToServer connects to the server at server and returns a MessageSender to communicate with the master
-func ConnectToServer(master string) (MessageSender, error) {
+func ConnectToServer(master string, handler TypedPackageHandler) (MessageSender, error) {
 	logger.Infof("connecting to master at %s", master)
 	conn, err := net.Dial("tcp", master)
 	if err != nil {
@@ -71,7 +71,7 @@ func ConnectToServer(master string) (MessageSender, error) {
 	}
 	logger.Infof("connected to master at %s", master)
 	go func() {
-		handleConnection(conn, newSlavePackageHandler())
+		handleConnection(conn, handler)
 		logger.Fatalf("connection to master closed")
 		os.Exit(1)
 	}()

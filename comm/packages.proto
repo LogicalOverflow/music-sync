@@ -21,6 +21,7 @@ message QueueChunkRequest {
     int64 chunkId = 2;
     repeated double sampleLow = 3 [packed = true];
     repeated double sampleHigh = 4 [packed = true];
+	uint64 firstSampleIndex = 5;
 }
 
 message PingMessage {
@@ -41,4 +42,15 @@ enum Channel {
     AUDIO = 0;
     META = 1;
     LYRICS = 2;
+}
+
+message NewSongInfo {
+	uint64 firstSampleOfSongIndex = 1;
+	string songFileName = 2;
+}
+
+message ChunkInfo {
+	int64 startTime = 1;
+	uint64 firstSampleIndex = 2;
+	uint64 chunkSize = 3;
 }

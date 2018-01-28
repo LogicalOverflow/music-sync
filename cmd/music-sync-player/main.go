@@ -40,7 +40,7 @@ func run(ctx *cli.Context) error {
 	schedule.SampleRate = sampleRate
 
 	server := fmt.Sprintf("%s:%d", serverAddress, serverPort)
-	sender, err := comm.ConnectToServer(server)
+	sender, err := comm.ConnectToServer(server, comm.NewPlayerPackageHandler())
 	if err != nil {
 		cli.NewExitError(err, 1)
 	}

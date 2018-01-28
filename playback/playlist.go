@@ -8,15 +8,18 @@ import (
 // Playlist is a array of songs, which can then be streamed.
 // After reaching the end of the playlist, playback will resume at the start.
 type Playlist struct {
-	songs        []string
-	songsMutex   sync.RWMutex
-	position     int
-	low          chan float64
-	high         chan float64
-	forceNext    chan bool
-	nanBreakSize int
-	playing      bool
-	currentSong  string
+	songs            []string
+	songsMutex       sync.RWMutex
+	position         int
+	low              chan float64
+	high             chan float64
+	forceNext        chan bool
+	nanBreakSize     int
+	playing          bool
+	currentSong      string
+	sampleIndexRead  uint64
+	sampleIndexWrite uint64
+	newSongHandler   func(startSampleIndex uint64, filename string)
 }
 
 // StreamLoop reads the samples of the song into the internal buffer.
@@ -25,9 +28,8 @@ func (pl *Playlist) StreamLoop() {
 	for {
 		pl.songsMutex.RLock()
 		if len(pl.songs) == 0 {
-			for i := 0; i < 4410; i++ {
-				pl.low <- math.NaN()
-				pl.high <- math.NaN()
+			for i := 0; i < 44100; i++ {
+				pl.pushSample(math.NaN(), math.NaN())
 			}
 			pl.songsMutex.RUnlock()
 			continue
@@ -43,22 +45,30 @@ func (pl *Playlist) StreamLoop() {
 		s, err := getStreamer(filename)
 		if err != nil {
 			logger.Warnf("skipping song %s in playlist: %v", filename, err)
+			if pos == pl.position {
+				pl.position++
+			}
+			continue
 		}
 
 		buf := make([][2]float64, 512)
+		first := true
 		for {
 			n, ok := len(buf), true
 			if pl.playing {
 				n, ok = s.Stream(buf)
 
+				if first {
+					go pl.newSongHandler(pl.sampleIndexWrite, filename)
+					first = false
+				}
+
 				for _, sample := range buf {
-					pl.low <- sample[0]
-					pl.high <- sample[1]
+					pl.pushSample(sample[0], sample[1])
 				}
 			} else {
 				for range buf {
-					pl.low <- math.NaN()
-					pl.high <- math.NaN()
+					pl.pushSample(math.NaN(), math.NaN())
 				}
 			}
 
@@ -73,10 +83,15 @@ func (pl *Playlist) StreamLoop() {
 			}
 		}
 		for i := 0; i < pl.nanBreakSize; i++ {
-			pl.low <- math.NaN()
-			pl.high <- math.NaN()
+			pl.pushSample(math.NaN(), math.NaN())
 		}
 	}
+}
+
+func (pl *Playlist) pushSample(low, high float64) {
+	pl.low <- low
+	pl.high <- high
+	pl.sampleIndexWrite += 1
 }
 
 // SetPos jumps to the song at pos.
@@ -149,12 +164,16 @@ func (pl *Playlist) RemoveSong(index int) string {
 }
 
 // Fill reads the samples from the internal buffer and fills low and high with them.
-func (pl *Playlist) Fill(low []float64, high []float64) {
+// low and high must have the same length.
+// returns the sampleIndex of the first read
+func (pl *Playlist) Fill(low []float64, high []float64) uint64 {
 	var wg sync.WaitGroup
 	wg.Add(2)
 	go func() { defer wg.Done(); copyFloatChannel(low, pl.low) }()
 	go func() { defer wg.Done(); copyFloatChannel(high, pl.high) }()
 	wg.Wait()
+	defer func() { pl.sampleIndexRead += uint64(len(low)) }()
+	return pl.sampleIndexRead
 }
 
 // Playing returns true if the playlist is currently playing audio.
@@ -172,21 +191,28 @@ func (pl *Playlist) CurrentSong() string {
 	return pl.currentSong
 }
 
+// Sets the new song handler, which is called every time the playlist begins playing a new song
+func (pl *Playlist) SetNewSongHandler(nsh func(startSampleIndex uint64, filename string)) {
+	pl.newSongHandler = nsh
+}
+
 // NewPlaylist create a new playlist with the given buffer size and songs in it, which
 // inserts nanBreakSize nan-samples between songs, which players use to realign playback.
 func NewPlaylist(bufferSize int, songs []string, nanBreakSize int) *Playlist {
 	return &Playlist{
-		songs:        songs,
-		position:     0,
-		low:          make(chan float64, bufferSize),
-		high:         make(chan float64, bufferSize),
-		forceNext:    make(chan bool, 2),
-		nanBreakSize: nanBreakSize,
-		playing:      true,
+		songs:            songs,
+		position:         0,
+		low:              make(chan float64, bufferSize),
+		high:             make(chan float64, bufferSize),
+		forceNext:        make(chan bool, 2),
+		nanBreakSize:     nanBreakSize,
+		playing:          false,
+		sampleIndexRead:  0,
+		sampleIndexWrite: 0,
 	}
 }
 
-func copyFloatChannel(dst [] float64, src chan float64) {
+func copyFloatChannel(dst []float64, src chan float64) {
 	for i := range dst {
 		dst[i] = <-src
 	}

@@ -7,11 +7,13 @@ import (
 	"net"
 )
 
-type typedPackageHandler struct {
-	typedPackageHandlerInterface
+// Typed package handler calls the handle functions of TypedPackageHandlerInterface
+type TypedPackageHandler struct {
+	TypedPackageHandlerInterface
 }
 
-type typedPackageHandlerInterface interface {
+// TypedPackageHandlerInterface has methods to handle all packages received
+type TypedPackageHandlerInterface interface {
 	HandleTimeSyncRequest(*TimeSyncRequest, net.Conn)
 	HandleTimeSyncResponse(*TimeSyncResponse, net.Conn)
 	HandleQueueChunkRequest(*QueueChunkRequest, net.Conn)
@@ -19,9 +21,11 @@ type typedPackageHandlerInterface interface {
 	HandlePongMessage(*PongMessage, net.Conn)
 	HandleSetVolumeRequest(*SetVolumeRequest, net.Conn)
 	HandleSubscribeChannelRequest(*SubscribeChannelRequest, net.Conn)
+	HandleNewSongInfo(*NewSongInfo, net.Conn)
+	HandleChunkInfo(*ChunkInfo, net.Conn)
 }
 
-func (t typedPackageHandler) Handle(message proto.Message, sender net.Conn) {
+func (t TypedPackageHandler) Handle(message proto.Message, sender net.Conn) {
 	switch message.(type) {
 	case *TimeSyncRequest:
 		go t.HandleTimeSyncRequest(message.(*TimeSyncRequest), sender)
@@ -37,8 +41,14 @@ func (t typedPackageHandler) Handle(message proto.Message, sender net.Conn) {
 		go t.HandleSetVolumeRequest(message.(*SetVolumeRequest), sender)
 	case *SubscribeChannelRequest:
 		go t.HandleSubscribeChannelRequest(message.(*SubscribeChannelRequest), sender)
+	case *NewSongInfo:
+		go t.HandleNewSongInfo(message.(*NewSongInfo), sender)
+	case *ChunkInfo:
+		go t.HandleChunkInfo(message.(*ChunkInfo), sender)
 	}
 }
+
+// TODO: move this is the server cmd
 
 type serverPackageHandler struct {
 	sender *multiMessageSender
@@ -52,45 +62,51 @@ func (s serverPackageHandler) HandleTimeSyncRequest(tsr *TimeSyncRequest, c net.
 	}
 }
 
-func (s serverPackageHandler) HandlePingMessage(_ *PingMessage, c net.Conn) {
-	if err := sendWire(&PongMessage{}, c); err != nil {
-		logger.Warnf("failed to send ping response: %v", err)
-	}
-}
 func (s serverPackageHandler) HandleSubscribeChannelRequest(scr *SubscribeChannelRequest, c net.Conn) {
 	s.sender.Subscribe(c, scr.Channel)
 	NewClientHandler(scr.Channel, &singleMessageSender{c})
 }
 
+func (s serverPackageHandler) HandlePingMessage(_ *PingMessage, c net.Conn) { PingHandler(c) }
+
 func (s serverPackageHandler) HandleTimeSyncResponse(*TimeSyncResponse, net.Conn)   {}
 func (s serverPackageHandler) HandleQueueChunkRequest(*QueueChunkRequest, net.Conn) {}
 func (s serverPackageHandler) HandlePongMessage(*PongMessage, net.Conn)             {}
 func (s serverPackageHandler) HandleSetVolumeRequest(*SetVolumeRequest, net.Conn)   {}
+func (s serverPackageHandler) HandleNewSongInfo(*NewSongInfo, net.Conn)             {}
+func (s serverPackageHandler) HandleChunkInfo(*ChunkInfo, net.Conn)                 {}
 
-func newMasterPackageHandler(sender *multiMessageSender) typedPackageHandler {
-	return typedPackageHandler{serverPackageHandler{sender: sender}}
+func newServerPackageHandler(sender *multiMessageSender) TypedPackageHandler {
+	return TypedPackageHandler{serverPackageHandler{sender: sender}}
 }
 
-type clientPackageHandler struct{}
+// TODO: move this in the player cmd
 
-func (c clientPackageHandler) HandleTimeSyncResponse(tsr *TimeSyncResponse, _ net.Conn) {
+type playerPackageHandler struct{}
+
+func (c playerPackageHandler) HandleTimeSyncResponse(tsr *TimeSyncResponse, _ net.Conn) {
 	clientRecv := timing.GetRawTime()
 	timing.UpdateOffset(tsr.ClientSendTime, tsr.ServerRecvTime, tsr.ServerSendTime, clientRecv)
 }
 
-func (c clientPackageHandler) HandleQueueChunkRequest(qsr *QueueChunkRequest, _ net.Conn) { playback.QueueChunk(qsr.StartTime, qsr.ChunkId, playback.CombineSamples(qsr.SampleLow, qsr.SampleHigh)) }
-func (c clientPackageHandler) HandleSetVolumeRequest(svr *SetVolumeRequest, _ net.Conn)   { playback.SetVolume(svr.Volume) }
+func (c playerPackageHandler) HandleQueueChunkRequest(qsr *QueueChunkRequest, _ net.Conn) { playback.QueueChunk(qsr.StartTime, qsr.ChunkId, playback.CombineSamples(qsr.SampleLow, qsr.SampleHigh)) }
+func (c playerPackageHandler) HandleSetVolumeRequest(svr *SetVolumeRequest, _ net.Conn)   { playback.SetVolume(svr.Volume) }
+func (c playerPackageHandler) HandlePingMessage(_ *PingMessage, conn net.Conn)            { PingHandler(conn) }
 
-func (c clientPackageHandler) HandlePingMessage(_ *PingMessage, conn net.Conn) {
+func (c playerPackageHandler) HandleTimeSyncRequest(*TimeSyncRequest, net.Conn)                 {}
+func (c playerPackageHandler) HandlePongMessage(*PongMessage, net.Conn)                         {}
+func (c playerPackageHandler) HandleSubscribeChannelRequest(*SubscribeChannelRequest, net.Conn) {}
+func (c playerPackageHandler) HandleNewSongInfo(*NewSongInfo, net.Conn)                         {}
+func (c playerPackageHandler) HandleChunkInfo(*ChunkInfo, net.Conn)                             {}
+
+// NewPlayerPackageHandler returns the TypedPackageHandler used by players
+func NewPlayerPackageHandler() TypedPackageHandler {
+	return TypedPackageHandler{playerPackageHandler{}}
+}
+
+// PingHandler handle a PingMessage
+func PingHandler(conn net.Conn) {
 	if err := sendWire(&PongMessage{}, conn); err != nil {
 		logger.Warnf("failed to send ping response: %v", err)
 	}
-}
-
-func (c clientPackageHandler) HandleTimeSyncRequest(*TimeSyncRequest, net.Conn)                 {}
-func (c clientPackageHandler) HandlePongMessage(*PongMessage, net.Conn)                         {}
-func (c clientPackageHandler) HandleSubscribeChannelRequest(*SubscribeChannelRequest, net.Conn) {}
-
-func newSlavePackageHandler() typedPackageHandler {
-	return typedPackageHandler{clientPackageHandler{}}
 }
