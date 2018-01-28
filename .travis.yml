@@ -4,8 +4,13 @@ go:
   - 1.9.x
 go_import_path: github.com/LogicalOverflow/music-sync
 
+env:
+  gobal:
+    secure: "HeAOAbqpJITaviNJ1PFDcEyDrRx0tPTj9fHNFKxxoQ0EErroeX0b7XBAowVrgCVr3EjOCpUIn8l1/1N6JZv6/rjhbZObkWRsDx8fAYgeVDKHWLrDVI2MtWdOtuEyk8LEpds42bI+rKXShIu2FtfX6jjTcOtpxda6QFZ/OZxn2L5SDAWUqPkmdpej7GfIYE1WBjsReumVtdaNaA+0SKdzl39YKfBs3AMU8t+5RnjMRbLEO9XlY1oDKgtoTg0xaTvSCiJpeh56u084gyfi3TvVh3CYCNDWLAkVT0hBuJ/ZFfwjZw/fIrGHlfEjauOSxnSW8fKheyMzsvSuXAOe8I1dTpQeI1BTnT7jxw9M7NOSzUyYgrSvH9Z/dw15vU5KQTfxMwjmaVSIXlUDPU11KzY7Y9lRdM45KYUW/vEf53/SY7F5JYdf3Xt7Lm6tFLNU0rlvHWuYcZY+VKZh2U8k2uabmbjF1w4bNv8hXZtMRa8gyB622tiuogWCDAZiFr5C70FKJXXdoShXhHhqm3eiJsRm/iBIhYtOHEyZ1bDEWCv8/EHckgvg0ZvYsl3zcZNTVcNIo++PhWiX9bMU0i+wGtoId0paeP7+CKMIZlIUMhptEjh/zc7LWSpOYFunWZHUVm4w6GiiNdlClEtO3i+//4Uj15trt+QxTiV9nvtm+4lSOBg="
+
 before_install:
 - go get github.com/mitchellh/gox
+- go get github.com/mattn/goveralls
 - sudo apt-get -qq update
 - sudo apt-get install -y libasound2-dev
 install:
@@ -16,6 +21,7 @@ script:
 - go vet ./...
 - go test ./...
 - gox -output "build/{{.Dir}}-{{.OS}}-{{.Arch}}" -ldflags="-X github.com/LogicalOverflow/music-sync/cmd.Tag=$TRAVIS_TAG -X github.com/LogicalOverflow/music-sync/cmd.Commit=$TRAVIS_COMMIT" -os="windows" ./...
+- $GOPATH/bin/goveralls -service=travis-ci
 
 deploy:
   provider: releases
