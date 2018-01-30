@@ -1,6 +1,8 @@
 // Package playback contains functions and types to stream and play audio
 package playback
 
+//
+
 import (
 	"fmt"
 	"os"
@@ -26,7 +28,7 @@ var logger = log.GetLogger("play")
 // AudioDir is the directory containing the audio file
 var AudioDir string
 
-func getStreamer(filename string) (beep.Streamer, error) {
+func getStreamer(filename string) (beep.StreamSeekCloser, error) {
 	filename = path.Join(AudioDir, filename)
 	f, err := os.Open(filename)
 	if err != nil {

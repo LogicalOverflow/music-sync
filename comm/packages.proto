@@ -47,10 +47,16 @@ enum Channel {
 message NewSongInfo {
 	uint64 firstSampleOfSongIndex = 1;
 	string songFileName = 2;
+	int64 songLength = 3;
 }
 
 message ChunkInfo {
 	int64 startTime = 1;
 	uint64 firstSampleIndex = 2;
 	uint64 chunkSize = 3;
+}
+
+message PauseInfo {
+	bool playing = 1;
+	uint64 toggleSampleIndex = 2;
 }

@@ -1,7 +1,6 @@
 package comm
 
 import (
-	"github.com/LogicalOverflow/music-sync/playback"
 	"github.com/LogicalOverflow/music-sync/timing"
 	"github.com/golang/protobuf/proto"
 	"net"
@@ -23,6 +22,7 @@ type TypedPackageHandlerInterface interface {
 	HandleSubscribeChannelRequest(*SubscribeChannelRequest, net.Conn)
 	HandleNewSongInfo(*NewSongInfo, net.Conn)
 	HandleChunkInfo(*ChunkInfo, net.Conn)
+	HandlePauseInfo(*PauseInfo, net.Conn)
 }
 
 func (t TypedPackageHandler) Handle(message proto.Message, sender net.Conn) {
@@ -45,10 +45,12 @@ func (t TypedPackageHandler) Handle(message proto.Message, sender net.Conn) {
 		go t.HandleNewSongInfo(message.(*NewSongInfo), sender)
 	case *ChunkInfo:
 		go t.HandleChunkInfo(message.(*ChunkInfo), sender)
+	case *PauseInfo:
+		go t.HandlePauseInfo(message.(*PauseInfo), sender)
 	}
 }
 
-// TODO: move this is the server cmd
+// TODO: move this is the server cmd?
 
 type serverPackageHandler struct {
 	sender *multiMessageSender
@@ -75,33 +77,10 @@ func (s serverPackageHandler) HandlePongMessage(*PongMessage, net.Conn)         
 func (s serverPackageHandler) HandleSetVolumeRequest(*SetVolumeRequest, net.Conn)   {}
 func (s serverPackageHandler) HandleNewSongInfo(*NewSongInfo, net.Conn)             {}
 func (s serverPackageHandler) HandleChunkInfo(*ChunkInfo, net.Conn)                 {}
+func (s serverPackageHandler) HandlePauseInfo(*PauseInfo, net.Conn)                 {}
 
 func newServerPackageHandler(sender *multiMessageSender) TypedPackageHandler {
 	return TypedPackageHandler{serverPackageHandler{sender: sender}}
-}
-
-// TODO: move this in the player cmd
-
-type playerPackageHandler struct{}
-
-func (c playerPackageHandler) HandleTimeSyncResponse(tsr *TimeSyncResponse, _ net.Conn) {
-	clientRecv := timing.GetRawTime()
-	timing.UpdateOffset(tsr.ClientSendTime, tsr.ServerRecvTime, tsr.ServerSendTime, clientRecv)
-}
-
-func (c playerPackageHandler) HandleQueueChunkRequest(qsr *QueueChunkRequest, _ net.Conn) { playback.QueueChunk(qsr.StartTime, qsr.ChunkId, playback.CombineSamples(qsr.SampleLow, qsr.SampleHigh)) }
-func (c playerPackageHandler) HandleSetVolumeRequest(svr *SetVolumeRequest, _ net.Conn)   { playback.SetVolume(svr.Volume) }
-func (c playerPackageHandler) HandlePingMessage(_ *PingMessage, conn net.Conn)            { PingHandler(conn) }
-
-func (c playerPackageHandler) HandleTimeSyncRequest(*TimeSyncRequest, net.Conn)                 {}
-func (c playerPackageHandler) HandlePongMessage(*PongMessage, net.Conn)                         {}
-func (c playerPackageHandler) HandleSubscribeChannelRequest(*SubscribeChannelRequest, net.Conn) {}
-func (c playerPackageHandler) HandleNewSongInfo(*NewSongInfo, net.Conn)                         {}
-func (c playerPackageHandler) HandleChunkInfo(*ChunkInfo, net.Conn)                             {}
-
-// NewPlayerPackageHandler returns the TypedPackageHandler used by players
-func NewPlayerPackageHandler() TypedPackageHandler {
-	return TypedPackageHandler{playerPackageHandler{}}
 }
 
 // PingHandler handle a PingMessage

@@ -8,18 +8,24 @@ import (
 // Playlist is a array of songs, which can then be streamed.
 // After reaching the end of the playlist, playback will resume at the start.
 type Playlist struct {
-	songs            []string
-	songsMutex       sync.RWMutex
-	position         int
-	low              chan float64
-	high             chan float64
-	forceNext        chan bool
-	nanBreakSize     int
-	playing          bool
-	currentSong      string
+	songs        []string
+	songsMutex   sync.RWMutex
+	position     int
+	low          chan float64
+	high         chan float64
+	forceNext    chan bool
+	nanBreakSize int
+
+	playing     bool
+	currentSong string
+
 	sampleIndexRead  uint64
 	sampleIndexWrite uint64
-	newSongHandler   func(startSampleIndex uint64, filename string)
+
+	newSongHandler     func(startSampleIndex uint64, filename string, songLength int64)
+	pauseToggleHandler func(playing bool, sample uint64)
+
+	playingLast bool
 }
 
 // StreamLoop reads the samples of the song into the internal buffer.
@@ -55,11 +61,12 @@ func (pl *Playlist) StreamLoop() {
 		first := true
 		for {
 			n, ok := len(buf), true
+			pl.callPauseToggleHandler()
 			if pl.playing {
 				n, ok = s.Stream(buf)
 
 				if first {
-					go pl.newSongHandler(pl.sampleIndexWrite, filename)
+					go pl.newSongHandler(pl.sampleIndexWrite, filename, int64(s.Len()))
 					first = false
 				}
 
@@ -92,6 +99,13 @@ func (pl *Playlist) pushSample(low, high float64) {
 	pl.low <- low
 	pl.high <- high
 	pl.sampleIndexWrite += 1
+}
+
+func (pl *Playlist) callPauseToggleHandler() {
+	if pl.playing != pl.playingLast {
+		pl.playingLast = pl.playing
+		go pl.pauseToggleHandler(pl.playing, pl.sampleIndexWrite)
+	}
 }
 
 // SetPos jumps to the song at pos.
@@ -192,8 +206,11 @@ func (pl *Playlist) CurrentSong() string {
 }
 
 // Sets the new song handler, which is called every time the playlist begins playing a new song
-func (pl *Playlist) SetNewSongHandler(nsh func(startSampleIndex uint64, filename string)) {
+func (pl *Playlist) SetNewSongHandler(nsh func(startSampleIndex uint64, filename string, songLength int64)) {
 	pl.newSongHandler = nsh
+}
+func (pl *Playlist) SetPauseToggleHandler(psh func(playing bool, sample uint64)) {
+	pl.pauseToggleHandler = psh
 }
 
 // NewPlaylist create a new playlist with the given buffer size and songs in it, which
@@ -207,6 +224,7 @@ func NewPlaylist(bufferSize int, songs []string, nanBreakSize int) *Playlist {
 		forceNext:        make(chan bool, 2),
 		nanBreakSize:     nanBreakSize,
 		playing:          false,
+		playingLast:      true,
 		sampleIndexRead:  0,
 		sampleIndexWrite: 0,
 	}

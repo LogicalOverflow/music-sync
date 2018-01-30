@@ -5,8 +5,11 @@ import (
 	"fmt"
 	"github.com/LogicalOverflow/music-sync/cmd"
 	"github.com/LogicalOverflow/music-sync/comm"
+	"github.com/LogicalOverflow/music-sync/playback"
 	"github.com/LogicalOverflow/music-sync/schedule"
+	"github.com/LogicalOverflow/music-sync/timing"
 	"github.com/urfave/cli"
+	"net"
 	"os"
 )
 
@@ -40,13 +43,35 @@ func run(ctx *cli.Context) error {
 	schedule.SampleRate = sampleRate
 
 	server := fmt.Sprintf("%s:%d", serverAddress, serverPort)
-	sender, err := comm.ConnectToServer(server, comm.NewPlayerPackageHandler())
+	sender, err := comm.ConnectToServer(server, newPlayerPackageHandler())
 	if err != nil {
-		cli.NewExitError(err, 1)
+		return cli.NewExitError(err, 1)
 	}
 
 	go schedule.Player(sender)
 
 	cmd.WaitForInterrupt()
 	return nil
+}
+
+type playerPackageHandler struct{}
+
+func (c playerPackageHandler) HandleTimeSyncResponse(tsr *comm.TimeSyncResponse, _ net.Conn) {
+	clientRecv := timing.GetRawTime()
+	timing.UpdateOffset(tsr.ClientSendTime, tsr.ServerRecvTime, tsr.ServerSendTime, clientRecv)
+}
+
+func (c playerPackageHandler) HandleQueueChunkRequest(qsr *comm.QueueChunkRequest, _ net.Conn) { playback.QueueChunk(qsr.StartTime, qsr.ChunkId, playback.CombineSamples(qsr.SampleLow, qsr.SampleHigh)) }
+func (c playerPackageHandler) HandleSetVolumeRequest(svr *comm.SetVolumeRequest, _ net.Conn)   { playback.SetVolume(svr.Volume) }
+func (c playerPackageHandler) HandlePingMessage(_ *comm.PingMessage, conn net.Conn)            { comm.PingHandler(conn) }
+
+func (c playerPackageHandler) HandleTimeSyncRequest(*comm.TimeSyncRequest, net.Conn)                 {}
+func (c playerPackageHandler) HandlePongMessage(*comm.PongMessage, net.Conn)                         {}
+func (c playerPackageHandler) HandleSubscribeChannelRequest(*comm.SubscribeChannelRequest, net.Conn) {}
+func (c playerPackageHandler) HandleNewSongInfo(*comm.NewSongInfo, net.Conn)                         {}
+func (c playerPackageHandler) HandleChunkInfo(*comm.ChunkInfo, net.Conn)                             {}
+func (c playerPackageHandler) HandlePauseInfo(*comm.PauseInfo, net.Conn)                             {}
+
+func newPlayerPackageHandler() comm.TypedPackageHandler {
+	return comm.TypedPackageHandler{playerPackageHandler{}}
 }

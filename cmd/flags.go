@@ -34,7 +34,6 @@ const (
 )
 
 // TODO: refine logging
-// TODO: check for old commented code
 
 // LoggingFlag is a cli flag which controls log output
 type LoggingFlag struct {

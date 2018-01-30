@@ -18,7 +18,7 @@ func channelOf(m proto.Message) (Channel, bool) {
 	switch m.(type) {
 	case *QueueChunkRequest, *SetVolumeRequest:
 		return Channel_AUDIO, true
-	case *ChunkInfo, *NewSongInfo:
+	case *ChunkInfo, *NewSongInfo, *PauseInfo:
 		return Channel_META, true
 	default:
 		return -1, false

@@ -40,20 +40,41 @@ var SampleRate = 44100
 func Server(sender comm.MessageSender) {
 	playlist := playback.NewPlaylist(SampleRate, []string{}, NanBreakSize)
 	volume := 0.1
+	var newestSong *comm.NewSongInfo
+
+	pauses := make([]*comm.PauseInfo, 0)
+
 	comm.NewClientHandler = func(c comm.Channel, s comm.MessageSender) {
 		switch c {
 		case comm.Channel_AUDIO:
 			s.SendMessage(&comm.SetVolumeRequest{Volume: volume})
+		case comm.Channel_META:
+			if newestSong != nil {
+				sender.SendMessage(newestSong)
+			}
+			for _, p := range pauses {
+				sender.SendMessage(p)
+			}
 		}
 	}
 
 	go playlist.StreamLoop()
 
-	playlist.SetNewSongHandler(func(startSampleIndex uint64, filename string) {
-		sender.SendMessage(&comm.NewSongInfo{
+	playlist.SetNewSongHandler(func(startSampleIndex uint64, filename string, songLength int64) {
+		newestSong = &comm.NewSongInfo{
 			FirstSampleOfSongIndex: startSampleIndex,
 			SongFileName:           filename,
-		})
+			SongLength:             songLength,
+		}
+		sender.SendMessage(newestSong)
+	})
+	playlist.SetPauseToggleHandler(func(playing bool, sample uint64) {
+		pause := &comm.PauseInfo{
+			Playing:           playing,
+			ToggleSampleIndex: sample,
+		}
+		pauses = append(pauses, pause)
+		sender.SendMessage(pause)
 	})
 
 	go func() {
