@@ -61,9 +61,15 @@ func (c playerPackageHandler) HandleTimeSyncResponse(tsr *comm.TimeSyncResponse,
 	timing.UpdateOffset(tsr.ClientSendTime, tsr.ServerRecvTime, tsr.ServerSendTime, clientRecv)
 }
 
-func (c playerPackageHandler) HandleQueueChunkRequest(qsr *comm.QueueChunkRequest, _ net.Conn) { playback.QueueChunk(qsr.StartTime, qsr.ChunkId, playback.CombineSamples(qsr.SampleLow, qsr.SampleHigh)) }
-func (c playerPackageHandler) HandleSetVolumeRequest(svr *comm.SetVolumeRequest, _ net.Conn)   { playback.SetVolume(svr.Volume) }
-func (c playerPackageHandler) HandlePingMessage(_ *comm.PingMessage, conn net.Conn)            { comm.PingHandler(conn) }
+func (c playerPackageHandler) HandleQueueChunkRequest(qsr *comm.QueueChunkRequest, _ net.Conn) {
+	playback.QueueChunk(qsr.StartTime, qsr.ChunkId, playback.CombineSamples(qsr.SampleLow, qsr.SampleHigh))
+}
+func (c playerPackageHandler) HandleSetVolumeRequest(svr *comm.SetVolumeRequest, _ net.Conn) {
+	playback.SetVolume(svr.Volume)
+}
+func (c playerPackageHandler) HandlePingMessage(_ *comm.PingMessage, conn net.Conn) {
+	comm.PingHandler(conn)
+}
 
 func (c playerPackageHandler) HandleTimeSyncRequest(*comm.TimeSyncRequest, net.Conn)                 {}
 func (c playerPackageHandler) HandlePongMessage(*comm.PongMessage, net.Conn)                         {}
@@ -73,5 +79,5 @@ func (c playerPackageHandler) HandleChunkInfo(*comm.ChunkInfo, net.Conn)        
 func (c playerPackageHandler) HandlePauseInfo(*comm.PauseInfo, net.Conn)                             {}
 
 func newPlayerPackageHandler() comm.TypedPackageHandler {
-	return comm.TypedPackageHandler{playerPackageHandler{}}
+	return comm.TypedPackageHandler{TypedPackageHandlerInterface: playerPackageHandler{}}
 }
