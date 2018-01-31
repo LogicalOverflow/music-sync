@@ -29,6 +29,8 @@ type state struct {
 
 	Pauses      []pauseToggle
 	PausesMutex sync.RWMutex
+
+	Volume float64
 }
 
 type pauseByToggleIndex []pauseToggle
@@ -138,6 +140,7 @@ afterCalcSample:
 		PausesInCurrentSong: pausesInCurrentSong,
 		Now:                 now,
 		Playing:             playing,
+		Volume:              s.Volume,
 	}
 }
 
@@ -147,6 +150,7 @@ type playbackInformation struct {
 	PausesInCurrentSong int64
 	Now                 int64
 	Playing             bool
+	Volume              float64
 }
 
 var currentState = &state{Songs: make([]upcomingSong, 0), Chunks: make([]upcomingChunk, 0)}
@@ -259,19 +263,20 @@ func drawLoop(screen tcell.Screen) {
 			playState = "Playing"
 		}
 
-		/*drawString(0, 12, tcell.StyleDefault, fmt.Sprintf("s: %v", currentState.Songs), screen)
-		drawString(0, 13, tcell.StyleDefault, fmt.Sprintf("c: %v", currentState.Chunks), screen)
-		drawString(0, 14, tcell.StyleDefault, fmt.Sprintf("p: %v", currentState.Pauses), screen)
-		drawString(0, 15, tcell.StyleDefault, fmt.Sprintf("pics: %v, playing: %v", info.PausesInCurrentSong, info.Playing), screen)*/
-
 		sampleLine := fmt.Sprintf("Current Sample: %d", currentSample)
 		songLine := fmt.Sprintf("Current Song (%s): %s (%s/%s)", playState, currentSong.filename, fmtDuration(timeInSong), fmtDuration(songLength))
+		volumeLine := fmt.Sprintf("Volume: %06.2f%%", currentState.Volume*100)
+
+		drawString(w-len(volumeLine)-1, h-3, tcell.StyleDefault, volumeLine, screen)
 		drawString(1, h-3, tcell.StyleDefault, songLine, screen)
-		if len(sampleLine) + len(songLine) + 6 < w {
-			drawString(w-len(sampleLine)-1, h-3, tcell.StyleDefault, sampleLine, screen)
+
+		if len(sampleLine) < w-10 {
+			drawString(w-len(sampleLine)-1, h-2, tcell.StyleDefault, sampleLine, screen)
+			drawProgress(1, h-2, tcell.StyleDefault, w-2-len(sampleLine), progressInSong, screen)
+		} else {
+			drawProgress(1, h-2, tcell.StyleDefault, w-2, progressInSong, screen)
 		}
-		drawProgress(1, h-2, tcell.StyleDefault, w-2, progressInSong, screen)
-		drawBox(0,h-4,w,4, tcell.StyleDefault, screen)
+		drawBox(0, h-4, w, 4, tcell.StyleDefault, screen)
 		screen.Show()
 		time.Sleep(500 * time.Millisecond)
 	}
@@ -285,8 +290,8 @@ func drawString(x, y int, style tcell.Style, str string, screen tcell.Screen) {
 }
 
 func drawProgress(x, y int, style tcell.Style, length int, progress float64, screen tcell.Screen) {
-	head := int(math.Floor(float64(length-1)*progress))
-	_, headProgress := math.Modf(float64(length)*progress)
+	head := int(math.Floor(float64(length-1) * progress))
+	_, headProgress := math.Modf(float64(length) * progress)
 	filledRune := '█'
 	emptyRune := ' '
 	var headRune rune
@@ -389,14 +394,19 @@ func (i *infoerPackageHandler) HandlePauseInfo(pauseInfo *comm.PauseInfo, _ net.
 	})
 	sort.Sort(pauseByToggleIndex(currentState.Pauses))
 }
+func (i *infoerPackageHandler) HandleSetVolumeRequest(svr *comm.SetVolumeRequest, _ net.Conn) {
+	currentState.Volume = svr.Volume
+}
 
-func (i *infoerPackageHandler) HandlePingMessage(_ *comm.PingMessage, conn net.Conn) { comm.PingHandler(conn) }
+func (i *infoerPackageHandler) HandlePingMessage(_ *comm.PingMessage, conn net.Conn) {
+	comm.PingHandler(conn)
+}
 
-func (i *infoerPackageHandler) HandleQueueChunkRequest(qsr *comm.QueueChunkRequest, _ net.Conn)       {}
-func (i *infoerPackageHandler) HandleSetVolumeRequest(svr *comm.SetVolumeRequest, _ net.Conn)         {}
-func (i *infoerPackageHandler) HandleTimeSyncRequest(*comm.TimeSyncRequest, net.Conn)                 {}
-func (i *infoerPackageHandler) HandlePongMessage(*comm.PongMessage, net.Conn)                         {}
-func (i *infoerPackageHandler) HandleSubscribeChannelRequest(*comm.SubscribeChannelRequest, net.Conn) {}
+func (i *infoerPackageHandler) HandleQueueChunkRequest(*comm.QueueChunkRequest, net.Conn) {}
+func (i *infoerPackageHandler) HandleTimeSyncRequest(*comm.TimeSyncRequest, net.Conn)     {}
+func (i *infoerPackageHandler) HandlePongMessage(*comm.PongMessage, net.Conn)             {}
+func (i *infoerPackageHandler) HandleSubscribeChannelRequest(*comm.SubscribeChannelRequest, net.Conn) {
+}
 
 // NewPlayerPackageHandler returns the TypedPackageHandler used by players
 func newInfoerPackageHandler() comm.TypedPackageHandler {

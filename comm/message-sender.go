@@ -26,7 +26,7 @@ func (mms *multiMessageSender) SendMessage(m proto.Message) error {
 	mms.mutex.RLock()
 	defer mms.mutex.RUnlock()
 
-	ch, hasCh := channelOf(m)
+	chs, hasCh := channelOf(m)
 
 	var errCol util.ErrorCollector
 	var wg sync.WaitGroup
@@ -35,7 +35,7 @@ func (mms *multiMessageSender) SendMessage(m proto.Message) error {
 	for _, c := range mms.connections {
 		go func(c net.Conn) {
 			defer wg.Done()
-			if !hasCh || mms.isSubscribed(c, ch) {
+			if !hasCh || mms.isSubscribed(c, chs) {
 				if err := sendWire(m, c); err != nil {
 					errCol.Add(err)
 				}
@@ -83,11 +83,13 @@ func (mms *multiMessageSender) Subscribe(c net.Conn, channel Channel) {
 	}
 }
 
-func (mms *multiMessageSender) isSubscribed(c net.Conn, channel Channel) bool {
+func (mms *multiMessageSender) isSubscribed(c net.Conn, channels []Channel) bool {
 	if l, ok := mms.channels[c]; ok {
 		for _, ch := range l {
-			if ch == channel {
-				return true
+			for _, c := range channels {
+				if ch == c {
+					return true
+				}
 			}
 		}
 	}

@@ -14,14 +14,16 @@ import (
 
 const zlibLevel = 5
 
-func channelOf(m proto.Message) (Channel, bool) {
+func channelOf(m proto.Message) ([]Channel, bool) {
 	switch m.(type) {
-	case *QueueChunkRequest, *SetVolumeRequest:
-		return Channel_AUDIO, true
+	case *QueueChunkRequest:
+		return []Channel{Channel_AUDIO}, true
+	case *SetVolumeRequest:
+		return []Channel{Channel_AUDIO, Channel_META}, true
 	case *ChunkInfo, *NewSongInfo, *PauseInfo:
-		return Channel_META, true
+		return []Channel{Channel_META}, true
 	default:
-		return -1, false
+		return []Channel{}, false
 	}
 }
 

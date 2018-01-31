@@ -59,6 +59,7 @@ func Server(sender comm.MessageSender) {
 		case comm.Channel_AUDIO:
 			s.SendMessage(&comm.SetVolumeRequest{Volume: volume})
 		case comm.Channel_META:
+			s.SendMessage(&comm.SetVolumeRequest{Volume: volume})
 			if newestSong != nil {
 				sender.SendMessage(newestSong)
 			}
