@@ -25,6 +25,7 @@ var (
 )
 
 var logger = log.GetLogger("play")
+
 // AudioDir is the directory containing the audio file
 var AudioDir string
 
@@ -58,7 +59,7 @@ func QueueChunk(startTime int64, chunkID int64, samples [][2]float64) {
 
 // CombineSamples combines to []float64 to one [][2]float64,
 // such that low[i] == returned[i][0] and high[i] == returned[i][1]
-func CombineSamples(low []float64, high []float64) ([][2]float64) {
+func CombineSamples(low []float64, high []float64) [][2]float64 {
 	e := len(low)
 	if len(high) < e {
 		e = len(high)

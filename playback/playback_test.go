@@ -1,6 +1,7 @@
 package playback
 
 import (
+	"github.com/LogicalOverflow/music-sync/logging"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -23,5 +24,13 @@ func TestCombineSamples(t *testing.T) {
 
 		assert.Equal(t, low[i], combined[i][0], "low combined sample at index %d has the wrong value", i)
 		assert.Equal(t, high[i], combined[i][1], "high combined sample at index %d has the wrong value", i)
+	}
+}
+
+func TestSetVolume(t *testing.T) {
+	log.DefaultCutoffLevel = log.LevelOff
+	for f := float64(0); f <= 1; f += .1 {
+		SetVolume(f)
+		assert.Equal(t, f, volume, "SetVolume did not set volume correctly")
 	}
 }
