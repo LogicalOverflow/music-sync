@@ -57,15 +57,20 @@ func ListGlobSongs(dir, pattern string) ([]string, error) {
 		return []string{}, nil
 	}
 
-	for i := range matches {
-		if strings.HasPrefix(matches[i], dir) {
-			matches[i] = matches[i][len(dir):]
+	result := make([]string, 0, len(matches))
+	for _, m := range matches {
+		if !IsFile(m) {
+			continue
 		}
-		if strings.HasPrefix(matches[i], "/") || strings.HasPrefix(matches[i], "\\") {
-			matches[i] = matches[i][1:]
+		if strings.HasPrefix(m, dir) {
+			m = m[len(dir):]
 		}
+		if strings.HasPrefix(m, "/") || strings.HasPrefix(m, "\\") {
+			m = m[1:]
+		}
+		result = append(result, m)
 	}
-	return matches, nil
+	return result, nil
 }
 
 // CheckDir checks whether a directory exists and is in fact a directory (returns an error if that is not the case)
@@ -90,4 +95,20 @@ func CheckFile(p string) error {
 		return fmt.Errorf("%s is directory", p)
 	}
 	return nil
+}
+
+// IsFile returns true if the path points to a existing directory
+func IsDir(p string) bool {
+	if fi, err := os.Stat(p); err != nil || !fi.IsDir() {
+		return false
+	}
+	return true
+}
+
+// IsFile returns true if the path points to a existing file
+func IsFile(p string) bool {
+	if fi, err := os.Stat(p); err != nil || fi.IsDir() {
+		return false
+	}
+	return true
 }

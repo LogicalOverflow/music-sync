@@ -1,6 +1,7 @@
 package timing
 
 import (
+	"github.com/LogicalOverflow/music-sync/logging"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -14,6 +15,7 @@ func TestResetOffsets(t *testing.T) {
 }
 
 func TestUpdateOffset(t *testing.T) {
+	log.DefaultCutoffLevel = log.LevelOff
 	for targetOffset := 0; targetOffset < 128; targetOffset += 8 {
 		ResetOffsets(32)
 		initialOffset := offset
