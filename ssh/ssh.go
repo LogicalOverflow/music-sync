@@ -16,16 +16,22 @@ import (
 // HostKeyFile is the path to the host key to use for the ssh control interface
 var HostKeyFile string
 
+// UserAuth contains the data to authenticate a user connection to the ssh control interface
+type UserAuth struct {
+	Password string `json:"password"`
+	PubKey   []byte `json:"pubKey"`
+}
+
 var logger = log.GetLogger("ssh")
 
 // ReadUsersFile reads a json file containing all users and passwords allowed to access the ssh control interface
 // It returns a dictionary user->password
-func ReadUsersFile(filename string) (map[string]string, error) {
+func ReadUsersFile(filename string) (map[string]UserAuth, error) {
 	f, err := os.Open(filename)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open users file (%s): %v", filename, err)
 	}
-	users := make(map[string]string)
+	users := make(map[string]UserAuth)
 	if err := json.NewDecoder(f).Decode(&users); err != nil {
 		return nil, fmt.Errorf("failed to decode users file (%s): %v", filename, err)
 	}
@@ -34,7 +40,7 @@ func ReadUsersFile(filename string) (map[string]string, error) {
 
 // StartSSH starts the ssh control interface on listening on address and accepting all users with the respective
 // passwords in the users dict (user->password)
-func StartSSH(address string, users map[string]string) {
+func StartSSH(address string, users map[string]UserAuth) {
 	ssh.Handle(func(s ssh.Session) {
 		defer s.Close()
 
@@ -128,7 +134,6 @@ func StartSSH(address string, users map[string]string) {
 				}
 			}
 		}
-
 	})
 
 	logger.Infof("starting ssh server at %s", address)
@@ -141,20 +146,31 @@ func StartSSH(address string, users map[string]string) {
 		options = append(options, ssh.HostKeyFile(HostKeyFile))
 	}
 	options = append(options, ssh.PasswordAuth(func(ctx ssh.Context, password string) bool {
-		expected, ok := users[ctx.User()]
-		if ok && expected == password {
+		auth, ok := users[ctx.User()]
+		if ok && auth.Password != "" && auth.Password == password {
 			return true
 		}
-		logger.Warnf("failed ssh login attempt from %s as %s", ctx.RemoteAddr(), ctx.User())
+		logger.Warnf("failed ssh login attempt from %s as %s using a password", ctx.RemoteAddr(), ctx.User())
+		return false
+	}), ssh.PublicKeyAuth(func(ctx ssh.Context, key ssh.PublicKey) bool {
+		auth, ok := users[ctx.User()]
+		if !ok || len(auth.PubKey) == 0 {
+			logger.Warnf("failed ssh login attempt from %s as %s using a public key", ctx.RemoteAddr(), ctx.User())
+			return false
+		}
+		authKey, err := ssh.ParsePublicKey(auth.PubKey)
+		if err != nil {
+			logger.Warnf("failed to parse ssh key for %s: %v", ctx.User(), err)
+			return false
+		}
+		if ssh.KeysEqual(key, authKey) {
+			return true
+		}
+		logger.Warnf("failed ssh login attempt from %s as %s using a public key", ctx.RemoteAddr(), ctx.User())
 		return false
 	}))
 
-	// TODO: add public key auth support
-	err := ssh.ListenAndServe(address, nil, ssh.PasswordAuth(func(ctx ssh.Context, password string) bool {
-		expected, ok := users[ctx.User()]
-		logger.Infof("ssh login attempt by %s", ctx.User())
-		return ok && expected == password
-	}))
+	err := ssh.ListenAndServe(address, nil, options...)
 	logger.Errorf("ssh server at %s stopped: %v", address, err)
 }
 

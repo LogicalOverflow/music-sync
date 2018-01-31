@@ -9,7 +9,7 @@ import (
 )
 
 // ListAllSongs recursively lists all songs (files) in songsDir/subDir
-func ListAllSongs(songsDir string, subDir string) ([]string) {
+func ListAllSongs(songsDir string, subDir string) []string {
 	songs := make([]string, 0)
 	dir := songsDir
 	if subDir != "" {
@@ -46,6 +46,26 @@ func ListAllSubDirs(dir string) []string {
 		return nil
 	})
 	return dirs
+}
+
+func ListGlobSongs(dir, pattern string) ([]string, error) {
+	matches, err := filepath.Glob(filepath.Join(dir, pattern))
+	if err != nil {
+		return []string{}, err
+	}
+	if matches == nil || len(matches) == 0 {
+		return []string{}, nil
+	}
+
+	for i := range matches {
+		if strings.HasPrefix(matches[i], dir) {
+			matches[i] = matches[i][len(dir):]
+		}
+		if strings.HasPrefix(matches[i], "/") || strings.HasPrefix(matches[i], "\\") {
+			matches[i] = matches[i][1:]
+		}
+	}
+	return matches, nil
 }
 
 // CheckDir checks whether a directory exists and is in fact a directory (returns an error if that is not the case)

@@ -12,6 +12,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -50,8 +51,8 @@ func Server(sender comm.MessageSender) {
 	volume := 0.1
 	var newestSong *comm.NewSongInfo
 
-	// TODO: add mutex and cleanup of old pauses
 	pauses := make([]*comm.PauseInfo, 0)
+	var pausesMutex sync.RWMutex
 
 	comm.NewClientHandler = func(c comm.Channel, s comm.MessageSender) {
 		switch c {
@@ -61,9 +62,11 @@ func Server(sender comm.MessageSender) {
 			if newestSong != nil {
 				sender.SendMessage(newestSong)
 			}
+			pausesMutex.RLock()
 			for _, p := range pauses {
 				sender.SendMessage(p)
 			}
+			pausesMutex.RUnlock()
 		}
 	}
 
@@ -82,7 +85,28 @@ func Server(sender comm.MessageSender) {
 			Playing:           playing,
 			ToggleSampleIndex: sample,
 		}
-		pauses = append(pauses, pause)
+		go func(pause *comm.PauseInfo) {
+			pausesMutex.Lock()
+			pauses = append(pauses, pause)
+			if newestSong != nil {
+				passed := 0
+				for i, p := range pauses {
+					if p.ToggleSampleIndex < newestSong.FirstSampleOfSongIndex && p.Playing {
+						passed = i
+					} else if newestSong.FirstSampleOfSongIndex < p.ToggleSampleIndex {
+						break
+					}
+				}
+				if 0 < passed {
+					copy(pauses, pauses[passed:])
+					for i := len(pauses) - passed; i < len(pauses); i++ {
+						pauses[i] = nil
+					}
+					pauses = pauses[:len(pauses)-passed]
+				}
+			}
+			pausesMutex.Unlock()
+		}(pause)
 		sender.SendMessage(pause)
 	})
 
@@ -120,17 +144,29 @@ func Server(sender comm.MessageSender) {
 			if len(args) != 2 && len(args) != 1 {
 				return "", false
 			}
-			song := args[0]
+			songPattern := args[0]
+			songs, err := util.ListGlobSongs(playback.AudioDir, songPattern)
+			if err != nil {
+				return fmt.Sprintf("glob pattern is invalid: %v", err), true
+			}
+			if len(songs) == 0 {
+				return fmt.Sprintf("no song matches the glob pattern %s", songPattern), true
+			}
+
 			if len(args) == 1 {
-				playlist.AddSong(song)
+				for _, s := range songs {
+					playlist.AddSong(s)
+				}
 			} else {
 				pos, err := strconv.Atoi(args[1])
 				if err != nil {
 					return "", false
 				}
-				playlist.InsertSong(song, pos)
+				for i, s := range songs {
+					playlist.InsertSong(s, pos+i)
+				}
 			}
-			return fmt.Sprintf("song %s added to playlist", song), true
+			return fmt.Sprintf("%d song(s) added to playlist: %s", len(songs), strings.Join(songs, ", ")), true
 		},
 		Options: func(prefix string, arg int) []string {
 			if arg != 0 {
