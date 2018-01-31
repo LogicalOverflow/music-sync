@@ -16,6 +16,9 @@ func ListAllSongs(songsDir string, subDir string) []string {
 		dir = filepath.Join(songsDir, subDir)
 	}
 	filepath.Walk(dir, func(path string, f os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
 		if strings.HasPrefix(path, songsDir) {
 			path = path[len(songsDir):]
 		}
@@ -34,6 +37,9 @@ func ListAllSongs(songsDir string, subDir string) []string {
 func ListAllSubDirs(dir string) []string {
 	dirs := make([]string, 0)
 	filepath.Walk(dir, func(path string, f os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
 		if strings.HasPrefix(path, dir) {
 			path = path[len(dir):]
 		}
