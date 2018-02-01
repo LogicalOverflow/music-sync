@@ -20,6 +20,7 @@ type SongMetadata struct {
 	Album  string
 }
 
+// GetProvider returns a new Provider
 func GetProvider() Provider {
 	return basicProvider{}
 }
