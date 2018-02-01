@@ -49,6 +49,7 @@ var SampleRate = 44100
 // Server starts a music-sync server, using sender to communicate with all clients
 func Server(sender comm.MessageSender) {
 	lyricsProvider := metadata.GetLyricsProvider()
+	metadataProvider := metadata.GetProvider()
 
 	playlist := playback.NewPlaylist(SampleRate, []string{}, NanBreakSize)
 	volume := 0.1
@@ -90,11 +91,18 @@ func Server(sender comm.MessageSender) {
 			wireLyrics[i] = &comm.NewSongInfo_SongLyricsLine{Atoms: wireLine}
 		}
 
+		md := metadataProvider.CollectMetadata(filename)
+
 		newestSong = &comm.NewSongInfo{
 			FirstSampleOfSongIndex: startSampleIndex,
 			SongFileName:           filename,
 			SongLength:             songLength,
 			Lyrics:                 wireLyrics,
+			Metadata: &comm.NewSongInfo_SongMetadata{
+				Title:  md.Title,
+				Artist: md.Artist,
+				Album:  md.Album,
+			},
 		}
 		sender.SendMessage(newestSong)
 	})

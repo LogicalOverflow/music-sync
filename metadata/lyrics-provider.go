@@ -17,16 +17,17 @@ type LyricsAtom struct {
 // LyricsLine is a line in the lyrics, composed of LyricsAtoms
 type LyricsLine []LyricsAtom
 
+// LyricsProvider is used to get the lyrics for songs
 type LyricsProvider interface {
 	CollectLyrics(song string) []LyricsLine
 }
 
+// GetLyricsProvider returns a new LyricsProvider
 func GetLyricsProvider() LyricsProvider {
 	return basicLyricsProvider{}
 }
 
-type basicLyricsProvider struct {
-}
+type basicLyricsProvider struct{}
 
 func (basicLyricsProvider) CollectLyrics(song string) []LyricsLine {
 	path := filepath.Join(playback.AudioDir, song+".json")

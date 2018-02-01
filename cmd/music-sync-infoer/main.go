@@ -274,26 +274,39 @@ func drawLoop(screen tcell.Screen) {
 			playState = "Playing"
 		}
 
-		// sampleLine := fmt.Sprintf("Current Sample: %d", currentSample)
-		songLine := fmt.Sprintf("Current Song: %s (%s/%s)", currentSong.filename, fmtDuration(timeInSong), fmtDuration(songLength))
+		songLineName := ""
+		songLineArtistAlbum := ""
+
+		timeLine := fmt.Sprintf("%s/%s", fmtDuration(timeInSong), fmtDuration(songLength))
+
+		if currentSong.metadata.Title != "" {
+			songLineName = currentSong.metadata.Title
+		} else {
+			songLineName = currentSong.filename
+		}
+
+		if currentSong.metadata.Artist != "" {
+			songLineArtistAlbum = currentSong.metadata.Artist
+			if currentSong.metadata.Album != "" {
+				songLineArtistAlbum += " - " + currentSong.metadata.Album
+			}
+		}
+
 		volumeLine := fmt.Sprintf("Volume: %06.2f%%", currentState.Volume*100)
 
-		drawString(w-len(volumeLine)-1, h-3, tcell.StyleDefault, volumeLine, screen)
-		drawString(1, h-3, tcell.StyleDefault, songLine, screen)
+		drawString(w-len(volumeLine)-1, h-4, tcell.StyleDefault, volumeLine, screen)
+		drawString(1, h-4, tcell.StyleDefault, songLineName, screen)
+		drawString(w-len(timeLine)-1, h-3, tcell.StyleDefault, timeLine, screen)
+		drawString(1, h-3, tcell.StyleDefault, songLineArtistAlbum, screen)
 
-		/*if len(sampleLine) < w-10 {
-			drawString(w-len(sampleLine)-1, h-2, tcell.StyleDefault, sampleLine, screen)
-			drawProgress(1, h-2, tcell.StyleDefault, w-2-len(sampleLine), progressInSong, screen)
-		} else {*/
 		drawProgress(1, h-2, tcell.StyleDefault, w-2, progressInSong, screen)
-		//}
 
-		drawBox(0, h-4, w, 4, tcell.StyleDefault, screen)
-		drawString(2, h-4, tcell.StyleDefault, playState, screen)
+		drawBox(0, h-5, w, 5, tcell.StyleDefault, screen)
+		drawString(2, h-5, tcell.StyleDefault, playState, screen)
 
 		lyricsHeight := lyricsHistorySize
-		if h < lyricsHeight+6 {
-			lyricsHeight = h - 6
+		if h < lyricsHeight+7 {
+			lyricsHeight = h - 7
 		}
 		if 0 < lyricsHeight {
 			if currentSong.lyrics != nil && 0 < len(currentSong.lyrics) {
@@ -319,11 +332,11 @@ func drawLoop(screen tcell.Screen) {
 				}
 
 				for i, l := range lines {
-					drawString(1, h-6-i, tcell.StyleDefault, l, screen)
+					drawString(1, h-7-i, tcell.StyleDefault, l, screen)
 				}
 			}
-			drawBox(0, h-6-lyricsHeight, w, lyricsHeight+2, tcell.StyleDefault, screen)
-			drawString(2, h-6-lyricsHeight, tcell.StyleDefault, "Lyrics", screen)
+			drawBox(0, h-7-lyricsHeight, w, lyricsHeight+2, tcell.StyleDefault, screen)
+			drawString(2, h-7-lyricsHeight, tcell.StyleDefault, "Lyrics", screen)
 		}
 
 		screen.Show()
@@ -390,6 +403,7 @@ type upcomingSong struct {
 	startIndex uint64
 	length     int64
 	lyrics     []metadata.LyricsLine
+	metadata   metadata.SongMetadata
 }
 
 type upcomingChunk struct {
@@ -429,11 +443,19 @@ func (i *infoerPackageHandler) HandleNewSongInfo(newSongInfo *comm.NewSongInfo, 
 		lyrics[i] = atoms
 	}
 
+	md := metadata.SongMetadata{}
+	if newSongInfo.Metadata != nil {
+		md.Title = newSongInfo.Metadata.Title
+		md.Artist = newSongInfo.Metadata.Artist
+		md.Album = newSongInfo.Metadata.Album
+	}
+
 	currentState.Songs = append(currentState.Songs, upcomingSong{
 		filename:   newSongInfo.SongFileName,
 		startIndex: newSongInfo.FirstSampleOfSongIndex,
 		length:     newSongInfo.SongLength,
 		lyrics:     lyrics,
+		metadata:   md,
 	})
 	sort.Sort(songsByStartIndex(currentState.Songs))
 }

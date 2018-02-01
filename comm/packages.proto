@@ -51,11 +51,17 @@ message NewSongInfo {
 	message SongLyricsLine {
 		repeated SongLyricsAtom atoms = 1;
 	}
+	message SongMetadata {
+		string Title = 1;
+		string Artist = 2;
+		string Album = 3;
+	}
 
 	uint64 firstSampleOfSongIndex = 1;
 	string songFileName = 2;
 	int64 songLength = 3;
 	repeated SongLyricsLine lyrics = 4;
+	SongMetadata metadata = 5;
 }
 
 message ChunkInfo {
