@@ -41,7 +41,6 @@ message SubscribeChannelRequest {
 enum Channel {
     AUDIO = 0;
     META = 1;
-    LYRICS = 2;
 }
 
 message NewSongInfo {
