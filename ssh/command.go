@@ -45,12 +45,16 @@ func init() {
 		Usage: "[command name]",
 		Info:  "retrieves help for a command",
 		Exec: func(args []string) (string, bool) {
-			// TODO: add clear/exit
 			if len(args) == 0 {
 				usages := make([]string, 0, len(commands))
 				for _, c := range commands {
 					usages = append(usages, fmt.Sprintf("%-15s %s", c.Name, c.Info))
 				}
+				usages = append(usages,
+					fmt.Sprintf("%-15s %s", "clear", "Clears the terminal"),
+					fmt.Sprintf("%-15s %s", "exit", "Closes the connection"),
+				)
+
 				return strings.Join(usages, "\n"), true
 			}
 
@@ -61,7 +65,14 @@ func init() {
 				}
 			}
 			if target == nil {
-				return fmt.Sprintf("Command %s does not exist.", args[0]), true
+				switch args[0] {
+				case "clear":
+					return "clear: Clears the terminal\nclear", true
+				case "exit":
+					return "exit: Closes the connection\nexit", true
+				default:
+					return fmt.Sprintf("Command %s does not exist.", args[0]), true
+				}
 			}
 			return target.Name + ": " + target.Info + "\n" + target.usage(), true
 		},
