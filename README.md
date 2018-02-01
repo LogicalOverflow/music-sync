@@ -55,6 +55,8 @@ Then you can start a local music-sync-server using
 
 To start a player use `music-sync-player`. By default this tries to connect to a server at `127.0.0.1:1333` (`--address`, `--port`). For more options check `music-sync-player --help`.
 
+To get information about the current song playing and lyrics (if provided) in a terminal UI, you can use `music-sync-infoer`. By default this tries to connect to a server at  `127.0.0.1:1333` (`--address`, `--port`). For more options check `music-sync-infoer --help`.
+
 The ssh terminal on the server is used to control the server. The usernames and passwords are read from `users.json` (`--users-file`). You can manage the current playlist, pause and resume playback and set the playback volume for all clients. These commands are available:
  * `queue filename [position]` - Adds filename to the playlist at position or the end. You can use glob patterns to add multiple files.
  * `remove position` - Removes the song at position from the playlist
