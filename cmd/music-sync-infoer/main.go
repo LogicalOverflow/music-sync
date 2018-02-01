@@ -6,6 +6,7 @@ import (
 	"github.com/LogicalOverflow/music-sync/cmd"
 	"github.com/LogicalOverflow/music-sync/comm"
 	"github.com/LogicalOverflow/music-sync/logging"
+	"github.com/LogicalOverflow/music-sync/metadata"
 	"github.com/LogicalOverflow/music-sync/schedule"
 	"github.com/LogicalOverflow/music-sync/timing"
 	"github.com/gdamore/tcell"
@@ -54,6 +55,8 @@ func (s songsByStartIndex) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
 func (s *state) Info() *playbackInformation {
 	now := timing.GetSyncedTime()
 	sample := int64(-1)
+	timeInChunk := int64(-1)
+	sampleInChunk := int64(-1)
 
 	s.ChunksMutex.Lock()
 	if len(s.Chunks) != 0 {
@@ -71,8 +74,8 @@ func (s *state) Info() *playbackInformation {
 			s.Chunks = s.Chunks[:len(s.Chunks)-passed]
 		}
 		if len(s.Chunks) != 0 {
-			timeInChunk := now - s.Chunks[0].startTime
-			sampleInChunk := int64(time.Duration(timeInChunk)*time.Nanosecond) / int64(schedule.SampleRate)
+			timeInChunk = now - s.Chunks[0].startTime
+			sampleInChunk = int64(time.Duration(timeInChunk) * time.Nanosecond * time.Duration(schedule.SampleRate) / time.Second)
 			sample = int64(s.Chunks[0].startIndex) + sampleInChunk
 		}
 	}
@@ -141,6 +144,8 @@ afterCalcSample:
 		Now:                 now,
 		Playing:             playing,
 		Volume:              s.Volume,
+		TIC:                 timeInChunk,
+		SIC:                 sampleInChunk,
 	}
 }
 
@@ -151,6 +156,7 @@ type playbackInformation struct {
 	Now                 int64
 	Playing             bool
 	Volume              float64
+	TIC, SIC            int64
 }
 
 var currentState = &state{Songs: make([]upcomingSong, 0), Chunks: make([]upcomingChunk, 0)}
@@ -163,6 +169,7 @@ func main() {
 		cmd.ServerPortFlag,
 
 		cmd.SampleRateFlag,
+		cmd.LyricsHistorySizeFlag,
 	}
 
 	if err := app.Run(os.Args); err != nil {
@@ -170,6 +177,8 @@ func main() {
 		os.Exit(1)
 	}
 }
+
+var lyricsHistorySize int
 
 func run(ctx *cli.Context) error {
 	// disable logging
@@ -180,6 +189,8 @@ func run(ctx *cli.Context) error {
 
 		sampleRate = ctx.Int(cmd.FlagKey(cmd.SampleRateFlag))
 	)
+	lyricsHistorySize = int(ctx.Uint(cmd.FlagKey(cmd.LyricsHistorySizeFlag)))
+
 	tcell.SetEncodingFallback(tcell.EncodingFallbackASCII)
 	s, e := tcell.NewScreen()
 	if e != nil {
@@ -251,11 +262,11 @@ func drawLoop(screen tcell.Screen) {
 		progressInSong := float64(0)
 		if currentSong.startIndex != 0 && int64(currentSong.startIndex) < currentSample {
 			sampleInSong := currentSample - int64(currentSong.startIndex) - info.PausesInCurrentSong
-			timeInSong = time.Duration(sampleInSong) * time.Second / time.Duration(schedule.SampleRate)
+			timeInSong = time.Duration(sampleInSong) * time.Second / time.Duration(schedule.SampleRate) / time.Nanosecond
 			if 0 < currentSong.length {
 				progressInSong = float64(sampleInSong) / float64(currentSong.length)
 			}
-			songLength = time.Duration(currentSong.length) * time.Second / time.Duration(schedule.SampleRate)
+			songLength = time.Duration(currentSong.length) * time.Second / time.Duration(schedule.SampleRate) / time.Nanosecond
 		}
 
 		playState := "Paused"
@@ -263,22 +274,60 @@ func drawLoop(screen tcell.Screen) {
 			playState = "Playing"
 		}
 
-		sampleLine := fmt.Sprintf("Current Sample: %d", currentSample)
-		songLine := fmt.Sprintf("Current Song (%s): %s (%s/%s)", playState, currentSong.filename, fmtDuration(timeInSong), fmtDuration(songLength))
+		// sampleLine := fmt.Sprintf("Current Sample: %d", currentSample)
+		songLine := fmt.Sprintf("Current Song: %s (%s/%s)", currentSong.filename, fmtDuration(timeInSong), fmtDuration(songLength))
 		volumeLine := fmt.Sprintf("Volume: %06.2f%%", currentState.Volume*100)
 
 		drawString(w-len(volumeLine)-1, h-3, tcell.StyleDefault, volumeLine, screen)
 		drawString(1, h-3, tcell.StyleDefault, songLine, screen)
 
-		if len(sampleLine) < w-10 {
+		/*if len(sampleLine) < w-10 {
 			drawString(w-len(sampleLine)-1, h-2, tcell.StyleDefault, sampleLine, screen)
 			drawProgress(1, h-2, tcell.StyleDefault, w-2-len(sampleLine), progressInSong, screen)
-		} else {
-			drawProgress(1, h-2, tcell.StyleDefault, w-2, progressInSong, screen)
-		}
+		} else {*/
+		drawProgress(1, h-2, tcell.StyleDefault, w-2, progressInSong, screen)
+		//}
+
 		drawBox(0, h-4, w, 4, tcell.StyleDefault, screen)
+		drawString(2, h-4, tcell.StyleDefault, playState, screen)
+
+		lyricsHeight := lyricsHistorySize
+		if h < lyricsHeight+6 {
+			lyricsHeight = h - 6
+		}
+		if 0 < lyricsHeight {
+			if currentSong.lyrics != nil && 0 < len(currentSong.lyrics) {
+				nextLine := 0
+				for ; nextLine < len(currentSong.lyrics); nextLine++ {
+					l := currentSong.lyrics[nextLine]
+					if l != nil && 0 < len(l) && int64(timeInSong/time.Millisecond) < l[0].Timestamp {
+						break
+					}
+				}
+
+				lines := make([]string, lyricsHeight)
+
+				for i := range lines {
+					lines[i] = ""
+					if 0 <= nextLine-i-1 {
+						for _, atom := range currentSong.lyrics[nextLine-i-1] {
+							if atom.Timestamp < int64(timeInSong/time.Millisecond)+100 {
+								lines[i] += atom.Caption
+							}
+						}
+					}
+				}
+
+				for i, l := range lines {
+					drawString(1, h-6-i, tcell.StyleDefault, l, screen)
+				}
+			}
+			drawBox(0, h-6-lyricsHeight, w, lyricsHeight+2, tcell.StyleDefault, screen)
+			drawString(2, h-6-lyricsHeight, tcell.StyleDefault, "Lyrics", screen)
+		}
+
 		screen.Show()
-		time.Sleep(500 * time.Millisecond)
+		time.Sleep(200 * time.Millisecond)
 	}
 	screen.Fini()
 }
@@ -290,8 +339,9 @@ func drawString(x, y int, style tcell.Style, str string, screen tcell.Screen) {
 }
 
 func drawProgress(x, y int, style tcell.Style, length int, progress float64, screen tcell.Screen) {
-	head := int(math.Floor(float64(length-1) * progress))
+	head := int(math.Floor(float64(length) * progress))
 	_, headProgress := math.Modf(float64(length) * progress)
+
 	filledRune := '█'
 	emptyRune := ' '
 	var headRune rune
@@ -305,6 +355,7 @@ func drawProgress(x, y int, style tcell.Style, length int, progress float64, scr
 	if head == length-1 {
 		headRune = filledRune
 	}
+
 	for i := 0; i < length; i++ {
 		var r rune
 		if i < head {
@@ -338,6 +389,7 @@ type upcomingSong struct {
 	filename   string
 	startIndex uint64
 	length     int64
+	lyrics     []metadata.LyricsLine
 }
 
 type upcomingChunk struct {
@@ -368,10 +420,20 @@ func (i *infoerPackageHandler) HandleTimeSyncResponse(tsr *comm.TimeSyncResponse
 func (i *infoerPackageHandler) HandleNewSongInfo(newSongInfo *comm.NewSongInfo, _ net.Conn) {
 	currentState.SongsMutex.Lock()
 	defer currentState.SongsMutex.Unlock()
+	lyrics := make([]metadata.LyricsLine, len(newSongInfo.Lyrics))
+	for i, l := range newSongInfo.Lyrics {
+		atoms := make([]metadata.LyricsAtom, len(l.Atoms))
+		for j, a := range l.Atoms {
+			atoms[j] = metadata.LyricsAtom{Timestamp: a.Timestamp, Caption: a.Caption}
+		}
+		lyrics[i] = atoms
+	}
+
 	currentState.Songs = append(currentState.Songs, upcomingSong{
 		filename:   newSongInfo.SongFileName,
 		startIndex: newSongInfo.FirstSampleOfSongIndex,
 		length:     newSongInfo.SongLength,
+		lyrics:     lyrics,
 	})
 	sort.Sort(songsByStartIndex(currentState.Songs))
 }

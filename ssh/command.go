@@ -45,6 +45,7 @@ func init() {
 		Usage: "[command name]",
 		Info:  "retrieves help for a command",
 		Exec: func(args []string) (string, bool) {
+			// TODO: add clear/exit
 			if len(args) == 0 {
 				usages := make([]string, 0, len(commands))
 				for _, c := range commands {

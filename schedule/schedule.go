@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/LogicalOverflow/music-sync/comm"
 	"github.com/LogicalOverflow/music-sync/logging"
+	"github.com/LogicalOverflow/music-sync/metadata"
 	"github.com/LogicalOverflow/music-sync/playback"
 	"github.com/LogicalOverflow/music-sync/ssh"
 	"github.com/LogicalOverflow/music-sync/timing"
@@ -47,6 +48,8 @@ var SampleRate = 44100
 
 // Server starts a music-sync server, using sender to communicate with all clients
 func Server(sender comm.MessageSender) {
+	lyricsProvider := metadata.GetLyricsProvider()
+
 	playlist := playback.NewPlaylist(SampleRate, []string{}, NanBreakSize)
 	volume := 0.1
 	var newestSong *comm.NewSongInfo
@@ -74,10 +77,24 @@ func Server(sender comm.MessageSender) {
 	go playlist.StreamLoop()
 
 	playlist.SetNewSongHandler(func(startSampleIndex uint64, filename string, songLength int64) {
+		lyrics := lyricsProvider.CollectLyrics(filename)
+		wireLyrics := make([]*comm.NewSongInfo_SongLyricsLine, len(lyrics))
+		for i, l := range lyrics {
+			wireLine := make([]*comm.NewSongInfo_SongLyricsAtom, len(l))
+			for j, a := range l {
+				wireLine[j] = &comm.NewSongInfo_SongLyricsAtom{
+					Timestamp: a.Timestamp,
+					Caption:   a.Caption,
+				}
+			}
+			wireLyrics[i] = &comm.NewSongInfo_SongLyricsLine{Atoms: wireLine}
+		}
+
 		newestSong = &comm.NewSongInfo{
 			FirstSampleOfSongIndex: startSampleIndex,
 			SongFileName:           filename,
 			SongLength:             songLength,
+			Lyrics:                 wireLyrics,
 		}
 		sender.SendMessage(newestSong)
 	})

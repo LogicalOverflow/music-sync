@@ -31,6 +31,8 @@ const (
 	DefaultNanBreakSize       = DefaultSampleRate * 1
 	DefaultStreamStartDelay   = 5 * time.Second
 	DefaultStreamDelay        = 15 * time.Second
+
+	DefaultLyricsHistorySize = uint(5)
 )
 
 // TODO: refine logging
@@ -214,6 +216,13 @@ var (
 		Name:  "sample-rate",
 		Usage: "the sample rate of the stream",
 		Value: DefaultSampleRate,
+	}
+
+	// LyricsHistorySizeFlag is a flag for the number of lyrics lines to display
+	LyricsHistorySizeFlag = cli.UintFlag{
+		Name:  "lyrics-history-size",
+		Usage: "number of lyrics lines to display",
+		Value: DefaultLyricsHistorySize,
 	}
 )
 

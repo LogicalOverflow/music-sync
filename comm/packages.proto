@@ -45,9 +45,18 @@ enum Channel {
 }
 
 message NewSongInfo {
+	message SongLyricsAtom {
+		int64 timestamp = 1;
+		string caption = 2;
+	}
+	message SongLyricsLine {
+		repeated SongLyricsAtom atoms = 1;
+	}
+
 	uint64 firstSampleOfSongIndex = 1;
 	string songFileName = 2;
 	int64 songLength = 3;
+	repeated SongLyricsLine lyrics = 4;
 }
 
 message ChunkInfo {
