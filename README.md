@@ -46,7 +46,8 @@ If you want, you can add lyrics information to your songs. To add lyrics to a so
             "caption": "line."
         },
     ],
-]```
+]
+```
 Here, timestamps are in milliseconds from the start of the song, each array describes a line of lyrics and each object in those arrays a word/phrase/syllable in the lyrics.
 
 Then you can start a local music-sync-server using
