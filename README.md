@@ -6,7 +6,7 @@
 [![License](https://img.shields.io/github/license/LogicalOverflow/music-sync.svg?style=flat-square)](https://github.com/LogicalOverflow/music-sync/blob/master/LICENSE)
 
 # Music Sync
-A go application to play the same music on multiple devices at once. It works best when all playing devices are similar, to avoid differences in the time it takes the audio to be played. I usually test the timing with two Windows 7 machines, one amd64, one 386 to ensure the timing difference between the devices is small enough that hearing 2 different devices playing music sounds like one.
+A go application to play the same music on multiple devices at once. It works best when all playing devices are similar, to avoid differences in the time it takes the audio to be played. I usually test the timing with two Windows 7 machines, one x64, one x86 to ensure the timing difference between the devices is small enough that hearing 2 different devices playing music sounds like one.
 
 ## Installation
 To install do `go get github.com/LogicalOverflow/music-sync/...` or download the executable from the [latest release](https://github.com/LogicalOverflow/music-sync/releases/latest).
@@ -66,6 +66,6 @@ The ssh terminal on the server is used to control the server. The usernames and 
  * `resume` - Resumes playback
  * `volume volume` - Sets the playback volume for all clients (volume should be between 0 and 1)
  * `help [command]` - Prints all commands or information and usage of command
- * `ls [sub-directory]` - Lists all files in the music (sub-)directory
+ * `ls [sub-directory]` - Lists all songs in the music (sub-)directory
  * `clear` - Clears the terminal
  * `exit` - Closes the connection
