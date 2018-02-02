@@ -118,3 +118,19 @@ func TestMultiMessageSender_DelConn(t *testing.T) {
 
 	assert.Zero(t, len(mms.connections), "multiMessageSender contains elements after deleting all connections")
 }
+
+func TestMultiMessageSender_Subscribe(t *testing.T) {
+	conn := newBufferConn()
+	mms := &multiMessageSender{connections: []net.Conn{conn}, channels: make(map[net.Conn][]Channel, 0)}
+
+	assert.False(t, mms.isSubscribed(conn, []Channel{Channel_AUDIO}), "multiMessageSender claims the connection is subscribed to the AUDIO channel")
+	assert.False(t, mms.isSubscribed(conn, []Channel{Channel_META}), "multiMessageSender claims the connection is subscribed to the META channel")
+
+	mms.Subscribe(conn, Channel_AUDIO)
+	assert.True(t, mms.isSubscribed(conn, []Channel{Channel_AUDIO}), "multiMessageSender claims the connection is not subscribed to the AUDIO channel")
+	assert.False(t, mms.isSubscribed(conn, []Channel{Channel_META}), "multiMessageSender claims the connection is subscribed to the META channel")
+
+	mms.Subscribe(conn, Channel_META)
+	assert.True(t, mms.isSubscribed(conn, []Channel{Channel_AUDIO}), "multiMessageSender claims the connection is not subscribed to the AUDIO channel")
+	assert.True(t, mms.isSubscribed(conn, []Channel{Channel_META}), "multiMessageSender claims the connection is not subscribed to the META channel")
+}
