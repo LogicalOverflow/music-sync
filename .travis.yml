@@ -10,7 +10,7 @@ env:
 
 branches:
   except:
-  - pages
+  - "gh-pages"
 
 before_install:
 - go get github.com/mitchellh/gox
