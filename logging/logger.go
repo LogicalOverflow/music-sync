@@ -3,15 +3,26 @@ package log
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"strings"
 	"time"
 )
 
+// OutputWriter is the writer to which normal log messages are written (level < LevelWarn)
+var OutputWriter io.Writer = os.Stdout
+
+// ErrorWriter is the writer to which Warn/Error/Fatal log messages are written
+var ErrorWriter io.Writer = os.Stderr
+
 // Format describes how a log message is formatted
 const Format = "[{lvl}] [{name}] {date}: {message}"
+
 // DateFormat describes how the date in a log message is formatted
 const DateFormat = "2006-01-02 15:04:05.000"
+
+// DateProvider returns the formatted date as string, use by the logger
+var DateProvider = func() string { return time.Now().Format(DateFormat) }
 
 // GetLogger returns a Logger to log from a given package
 func GetLogger(name string) Logger {
@@ -21,13 +32,13 @@ func GetLogger(name string) Logger {
 			return
 		}
 		r := strings.NewReplacer("{lvl}", level.ShortName(), "{level}", level.FullName(),
-			"{name}", printName, "{date}", time.Now().Format(DateFormat),
+			"{name}", printName, "{date}", DateProvider(),
 			"{message}", msg, "{msg}", msg)
 		m := r.Replace(Format)
 		if level < LevelWarn {
-			fmt.Fprintln(os.Stdout, m)
+			fmt.Fprintln(OutputWriter, m)
 		} else {
-			fmt.Fprintln(os.Stderr, m)
+			fmt.Fprintln(ErrorWriter, m)
 		}
 	}
 }

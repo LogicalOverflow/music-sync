@@ -32,8 +32,8 @@ const testDir = "_file-lister-test-files"
 // - file2
 // - file3
 
-func TestListAllSongs(t *testing.T) {
-	songsDir1 := ListAllSongs(testDir, "dir1")
+func TestListAllFiles(t *testing.T) {
+	songsDir1 := ListAllFiles(testDir, "dir1")
 	require.Equal(t, 6, len(songsDir1), "number of files found by ListAllSongs with sub dir is wrong")
 
 	sort.Strings(songsDir1)
@@ -45,7 +45,7 @@ func TestListAllSongs(t *testing.T) {
 	assert.Equal(t, filepath.Join("dir1", "subdir1", "file2"), songsDir1[4], "file found by ListAllSongs with sub dir is wrong")
 	assert.Equal(t, filepath.Join("dir1", "subdir1", "file3"), songsDir1[5], "file found by ListAllSongs with sub dir is wrong")
 
-	songs := ListAllSongs(testDir, "")
+	songs := ListAllFiles(testDir, "")
 	require.Equal(t, 15, len(songs), "number of files found by ListAllSongs without sub dir is wrong")
 
 	sort.Strings(songs)
@@ -79,8 +79,8 @@ func TestListAllSubDirs(t *testing.T) {
 	assert.Equal(t, "dir3", subDirs[3], "dir found by ListAllSubDirs is wrong")
 }
 
-func TestListGlobSongs(t *testing.T) {
-	songsDir1, err := ListGlobSongs(testDir, "dir1/*")
+func TestListGlobFiles(t *testing.T) {
+	songsDir1, err := ListGlobFiles(testDir, "dir1/*")
 	require.Nil(t, err, "ListGlobSongs for dir1/* caused an error")
 	require.Equal(t, 3, len(songsDir1), "number of files found by ListGlobSongs for dir/* is wrong")
 
@@ -90,7 +90,7 @@ func TestListGlobSongs(t *testing.T) {
 	assert.Equal(t, filepath.Join("dir1", "file2"), songsDir1[1], "file found by ListGlobSongs for dir/* is wrong")
 	assert.Equal(t, filepath.Join("dir1", "file3"), songsDir1[2], "file found by ListGlobSongs for dir/* is wrong")
 
-	songs1Deep, err := ListGlobSongs(testDir, "*/*")
+	songs1Deep, err := ListGlobFiles(testDir, "*/*")
 	require.Nil(t, err, "ListGlobSongs for */* caused an error")
 	require.Equal(t, 9, len(songs1Deep), "number of files found by ListGlobSongs for */* is wrong")
 
@@ -105,6 +105,23 @@ func TestListGlobSongs(t *testing.T) {
 	assert.Equal(t, filepath.Join("dir3", "file1"), songs1Deep[6], "file found by ListGlobSongs for */* is wrong")
 	assert.Equal(t, filepath.Join("dir3", "file2"), songs1Deep[7], "file found by ListGlobSongs for */* is wrong")
 	assert.Equal(t, filepath.Join("dir3", "file3"), songs1Deep[8], "file found by ListGlobSongs for */* is wrong")
+}
+
+func TestFilterSongs(t *testing.T) {
+	cases := [][2][]string{
+		{{"no-song.json", "a-song.mp3", "another-song.mp3", "another-non-song.bin"}, {"a-song.mp3", "another-song.mp3"}},
+		{{"no-song", "nope"}, {}},
+		{{".mp3", "this-song.mp3"}, {".mp3", "this-song.mp3"}},
+	}
+	for _, c := range cases {
+		actual := FilterSongs(c[0])
+		expected := c[1]
+		if assert.Equal(t, len(expected), len(actual), "FilterSong result length is wrong for %v", c[0]) {
+			for i := range expected {
+				assert.Equal(t, expected[i], actual[i], "FilterSong result at index %d is wrong for %v", i, c[0])
+			}
+		}
+	}
 }
 
 func TestIsDir(t *testing.T) {

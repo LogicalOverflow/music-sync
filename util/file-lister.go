@@ -8,8 +8,19 @@ import (
 	"strings"
 )
 
-// ListAllSongs recursively lists all songs (files) in songsDir/subDir
-func ListAllSongs(songsDir string, subDir string) []string {
+// FilterSongs removes all non-songs from the files slice
+func FilterSongs(files []string) []string {
+	result := make([]string, 0)
+	for _, f := range files {
+		if strings.HasSuffix(f, ".mp3") {
+			result = append(result, f)
+		}
+	}
+	return result
+}
+
+// ListAllFiles recursively lists all songs (files) in songsDir/subDir
+func ListAllFiles(songsDir string, subDir string) []string {
 	songs := make([]string, 0)
 	dir := songsDir
 	if subDir != "" {
@@ -54,7 +65,7 @@ func ListAllSubDirs(dir string) []string {
 	return dirs
 }
 
-func ListGlobSongs(dir, pattern string) ([]string, error) {
+func ListGlobFiles(dir, pattern string) ([]string, error) {
 	matches, err := filepath.Glob(filepath.Join(dir, pattern))
 	if err != nil {
 		return []string{}, err

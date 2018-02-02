@@ -92,13 +92,13 @@ func init() {
 	RegisterCommand(Command{
 		Name:  "ls",
 		Usage: "[sub directory]",
-		Info:  "lists all files in the music (sub) directory",
+		Info:  "lists all songs in the music (sub) directory",
 		Exec: func(args []string) (string, bool) {
 			subDir := ""
 			if 0 < len(args) {
 				subDir = args[0]
 			}
-			songs := util.ListAllSongs(playback.AudioDir, subDir)
+			songs := util.FilterSongs(util.ListAllFiles(playback.AudioDir, subDir))
 			return strings.Join(songs, "\n"), true
 		},
 		Options: func(prefix string, arg int) []string {

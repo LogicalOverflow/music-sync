@@ -171,10 +171,11 @@ func Server(sender comm.MessageSender) {
 				return "", false
 			}
 			songPattern := args[0]
-			songs, err := util.ListGlobSongs(playback.AudioDir, songPattern)
+			songs, err := util.ListGlobFiles(playback.AudioDir, songPattern)
 			if err != nil {
 				return fmt.Sprintf("glob pattern is invalid: %v", err), true
 			}
+			songs = util.FilterSongs(songs)
 			if len(songs) == 0 {
 				return fmt.Sprintf("no song matches the glob pattern %s", songPattern), true
 			}
@@ -198,7 +199,7 @@ func Server(sender comm.MessageSender) {
 			if arg != 0 {
 				return []string{}
 			}
-			songs := util.ListAllSongs(playback.AudioDir, "")
+			songs := util.FilterSongs(util.ListAllFiles(playback.AudioDir, ""))
 			options := make([]string, 0, len(songs))
 			for _, song := range songs {
 				if strings.HasPrefix(song, prefix) {
