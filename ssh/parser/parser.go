@@ -34,6 +34,7 @@ func (c ParsedCommand) Unparse() string {
 	return strings.Replace(c.Command, " ", "\\ ", -1) + " " + strings.Join(unparsedParams, " ")
 }
 
+// ParseCommand parses an ssh command
 func ParseCommand(line string) ParsedCommand {
 	p := getParser(line)
 	tree := p.Line()
