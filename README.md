@@ -69,4 +69,5 @@ The ssh terminal on the server is used to control the server. The usernames and 
  * `ls [sub-directory]` - Lists all songs in the music (sub-)directory
  * `clear` - Clears the terminal
  * `exit` - Closes the connection
+ 
 Spaces in commands can be escaped using `\ `. To escape a backslash before a space use `\\ `, otherwise the backslash does not need to be escaped.
