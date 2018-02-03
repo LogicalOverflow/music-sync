@@ -87,6 +87,14 @@ func TestParsedCommand_Unparse(t *testing.T) {
 			cmd:    ParsedCommand{Command: "abc", Parameters: []string{"def ghi"}},
 			result: "abc def\\ ghi",
 		},
+		{
+			cmd:    ParsedCommand{Command: "abc def", Parameters: []string{"ghi"}},
+			result: "abc\\ def ghi",
+		},
+		{
+			cmd:    ParsedCommand{Command: "abc def", Parameters: []string{}},
+			result: "abc\\ def",
+		},
 	}
 
 	for _, c := range cases {

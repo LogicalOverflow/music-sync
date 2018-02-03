@@ -24,14 +24,14 @@ type ParsedCommand struct {
 // Unparse converts a parsed command back to a shell command
 func (c ParsedCommand) Unparse() string {
 	if len(c.Parameters) == 0 {
-		return c.Command
+		return strings.Replace(c.Command, " ", "\\ ", -1)
 	}
 	unparsedParams := make([]string, len(c.Parameters))
 	for i, p := range c.Parameters {
 		unparsedParams[i] = strings.Replace(p, " ", "\\ ", -1)
 	}
 
-	return c.Command + " " + strings.Join(unparsedParams, " ")
+	return strings.Replace(c.Command, " ", "\\ ", -1) + " " + strings.Join(unparsedParams, " ")
 }
 
 func ParseCommand(line string) ParsedCommand {
