@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/LogicalOverflow/music-sync/logging"
+	"github.com/LogicalOverflow/music-sync/ssh/parser"
 	"github.com/LogicalOverflow/music-sync/util"
 	"github.com/chzyer/readline"
 	"github.com/gliderlabs/ssh"
@@ -96,20 +97,12 @@ func StartSSH(address string, users map[string]UserAuth) {
 				return
 			}
 
-			parts := make([]string, 1)
-			parts[0] = strings.TrimSpace(line)
-			for strings.Contains(parts[len(parts)-1], " ") {
-				l := parts[len(parts)-1]
-				i := strings.Index(l, " ")
-				parts[len(parts)-1] = strings.TrimSpace(l[:i])
-				parts = append(parts, strings.TrimSpace(l[i:]))
-			}
-			cmd, args := parts[0], parts[1:]
+			cmd := parser.ParseCommand(line)
 
 			known := false
 			for _, c := range commands {
-				if c.Name == cmd {
-					s, ok := c.Exec(args)
+				if c.Name == cmd.Command {
+					s, ok := c.Exec(cmd.Parameters)
 					if ok {
 						if strings.HasSuffix(s, "\n") {
 							s = s[:len(s)-1]
@@ -123,14 +116,14 @@ func StartSSH(address string, users map[string]UserAuth) {
 				}
 			}
 			if !known {
-				switch cmd {
+				switch cmd.Command {
 				case "clear":
 					fmt.Fprint(ex, "\033[H")
 				case "exit":
 					logger.Infof("connection %s as %s closed", s.RemoteAddr(), s.User())
 					return
 				default:
-					fmt.Fprintf(ex, "Unknown command '%s'. Type 'help' for help.\n", cmd)
+					fmt.Fprintf(ex, "Unknown command '%s'. Type 'help' for help.\n", cmd.Command)
 				}
 			}
 		}
@@ -179,40 +172,33 @@ type sshAutoCompleter struct{}
 func (sac *sshAutoCompleter) Do(line []rune, pos int) (newLine [][]rune, length int) {
 	newLine = make([][]rune, 0)
 
-	for _, c := range commands {
-		if string(line) == c.Name {
-			if c.Options != nil {
-				for _, o := range c.Options("", 0) {
-					newLine = append(newLine, []rune(c.Name + " " + o)[pos:])
-				}
+	cmd := parser.ParseCommand(string(line))
+
+	if len(cmd.Parameters) == 0 {
+		for _, c := range commands {
+			if strings.HasPrefix(c.Name, cmd.Command) {
+				newLine = append(newLine, []rune(c.Name + " ")[pos:])
 			}
-		} else if strings.HasPrefix(string(line), c.Name+" ") {
-			if c.Options != nil {
-				argStart := strings.LastIndex(string(line), " ") + 1
-				baseLine := string(line)[:argStart]
-				prefix := string(line)[argStart:]
-				argNum := -1
-				for i := range line {
-					if i != 0 && line[i-1] != ' ' && line[i] == ' ' {
-						argNum++
+		}
+
+		for _, c := range []string{"clear", "exit"} {
+			if strings.HasPrefix(c, cmd.Command) {
+				newLine = append(newLine, []rune(c + " ")[pos:])
+			}
+		}
+	} else {
+		for _, c := range commands {
+			if c.Name == cmd.Command {
+				if c.Options != nil {
+					argNum := len(cmd.Parameters) - 1
+					arg := cmd.Parameters[argNum]
+					for _, o := range c.Options(arg, argNum) {
+						cmd.Parameters[argNum] = o
+						newLine = append(newLine, []rune(cmd.Unparse() + " ")[pos:])
 					}
-				}
-				for _, o := range c.Options(prefix, argNum) {
-					newLine = append(newLine, []rune(baseLine + o)[pos:])
+					cmd.Parameters[argNum] = arg
 				}
 			}
-		}
-	}
-
-	for _, c := range commands {
-		if strings.HasPrefix(c.Name, string(line)) {
-			newLine = append(newLine, []rune(c.Name + " ")[pos:])
-		}
-	}
-
-	for _, c := range []string{"clear", "exit"} {
-		if strings.HasPrefix(c, string(line)) {
-			newLine = append(newLine, []rune(c)[pos:])
 		}
 	}
 	length = pos

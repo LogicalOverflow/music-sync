@@ -80,7 +80,7 @@ func init() {
 			if arg != 0 {
 				return []string{}
 			}
-			options := make([]string, 0)
+			options := []string{"clear", "exit"}
 			for _, c := range commands {
 				if strings.HasSuffix(c.Name, prefix) {
 					options = append(options, c.Name)
