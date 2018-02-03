@@ -9,9 +9,9 @@ import (
 	"testing"
 )
 
-const testDir = "_file-lister-test-files"
+const testDir = "_file_lister_test_files"
 
-// _file-lister-test-files:
+// _file_lister_test_files:
 // - dir1
 //   - subdir1
 //     - file1
