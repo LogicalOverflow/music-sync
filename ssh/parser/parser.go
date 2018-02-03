@@ -24,14 +24,14 @@ type ParsedCommand struct {
 // Unparse converts a parsed command back to a shell command
 func (c ParsedCommand) Unparse() string {
 	if len(c.Parameters) == 0 {
-		return strings.Replace(c.Command, " ", "\\ ", -1)
+		return strings.Replace(c.Command, " ", "\\ ", -1) + " "
 	}
 	unparsedParams := make([]string, len(c.Parameters))
 	for i, p := range c.Parameters {
 		unparsedParams[i] = strings.Replace(p, " ", "\\ ", -1)
 	}
 
-	return strings.Replace(c.Command, " ", "\\ ", -1) + " " + strings.Join(unparsedParams, " ")
+	return strings.Replace(c.Command, " ", "\\ ", -1) + " " + strings.Join(unparsedParams, " ") + " "
 }
 
 // ParseCommand parses an ssh command
@@ -85,5 +85,14 @@ func (s *shellListener) ExitParameter(ctx *shell_parser.ParameterContext) {
 		return
 	}
 	str := s.commandStrings[cctx.GetSourceInterval().Start]
-	s.cmd.Parameters = append(s.cmd.Parameters, str)
+	if str != "" {
+		s.cmd.Parameters = append(s.cmd.Parameters, str)
+	}
+}
+
+func (s *shellListener) ExitLine(ctx *shell_parser.LineContext) {
+	s.cmd.Command = strings.TrimSpace(s.cmd.Command)
+	for i := range s.cmd.Parameters {
+		s.cmd.Parameters[i] = strings.TrimSpace(s.cmd.Parameters[i])
+	}
 }

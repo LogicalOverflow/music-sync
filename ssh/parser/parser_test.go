@@ -62,6 +62,14 @@ func TestParseCommand(t *testing.T) {
 			line:   "\"\\\"\"",
 			result: ParsedCommand{Command: "\"\\\"\"", Parameters: []string{}},
 		},
+		{
+			line:   "\"\\\"\"",
+			result: ParsedCommand{Command: "\"\\\"\"", Parameters: []string{}},
+		},
+		{
+			line:   "abc def ghi ",
+			result: ParsedCommand{Command: "abc", Parameters: []string{"def", "ghi"}},
+		},
 	}
 	for _, c := range cases {
 		parsed := ParseCommand(c.line)
@@ -81,19 +89,19 @@ func TestParsedCommand_Unparse(t *testing.T) {
 	}{
 		{
 			cmd:    ParsedCommand{Command: "abc", Parameters: []string{"def", "ghi"}},
-			result: "abc def ghi",
+			result: "abc def ghi ",
 		},
 		{
 			cmd:    ParsedCommand{Command: "abc", Parameters: []string{"def ghi"}},
-			result: "abc def\\ ghi",
+			result: "abc def\\ ghi ",
 		},
 		{
 			cmd:    ParsedCommand{Command: "abc def", Parameters: []string{"ghi"}},
-			result: "abc\\ def ghi",
+			result: "abc\\ def ghi ",
 		},
 		{
 			cmd:    ParsedCommand{Command: "abc def", Parameters: []string{}},
-			result: "abc\\ def",
+			result: "abc\\ def ",
 		},
 	}
 
