@@ -73,3 +73,24 @@ func TestParseCommand(t *testing.T) {
 		}
 	}
 }
+
+func TestParsedCommand_Unparse(t *testing.T) {
+	cases := []struct {
+		cmd    ParsedCommand
+		result string
+	}{
+		{
+			cmd:    ParsedCommand{Command: "abc", Parameters: []string{"def", "ghi"}},
+			result: "abc def ghi",
+		},
+		{
+			cmd:    ParsedCommand{Command: "abc", Parameters: []string{"def ghi"}},
+			result: "abc def\\ ghi",
+		},
+	}
+
+	for _, c := range cases {
+		unparsed := c.cmd.Unparse()
+		assert.Equal(t, c.result, unparsed, "unparsing %v yielded the wrong result", c.cmd)
+	}
+}

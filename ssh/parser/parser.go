@@ -7,8 +7,6 @@ import (
 	"strings"
 )
 
-type escapeStyle int
-
 func getParser(line string) *shell_parser.ShellParser {
 	inputStream := antlr.NewInputStream(line)
 	lexer := shell_parser.NewShellLexer(inputStream)
@@ -30,15 +28,7 @@ func (c ParsedCommand) Unparse() string {
 	}
 	unparsedParams := make([]string, len(c.Parameters))
 	for i, p := range c.Parameters {
-		if !strings.Contains(p, " ") {
-			unparsedParams[i] = p
-		} else if !strings.Contains(p, "\"") {
-			unparsedParams[i] = "\"" + p + "\""
-		} else if !strings.Contains(p, "'") {
-			unparsedParams[i] = "'" + p + "'"
-		} else {
-			unparsedParams[i] = "\"" + strings.Replace(p, "\"", "\\\"", -1) + "\""
-		}
+		unparsedParams[i] = strings.Replace(p, " ", "\\ ", -1)
 	}
 
 	return c.Command + " " + strings.Join(unparsedParams, " ")
