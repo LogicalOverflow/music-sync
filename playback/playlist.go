@@ -1,6 +1,7 @@
 package playback
 
 import (
+	"github.com/faiface/beep"
 	"math"
 	"sync"
 )
@@ -32,66 +33,80 @@ type Playlist struct {
 // This method blocks forever and must be called exactly once before streaming from the playlist.
 func (pl *Playlist) StreamLoop() {
 	for {
-		pl.songsMutex.RLock()
-		if len(pl.songs) == 0 {
+		filename := pl.nextSong()
+		if filename == "" {
 			for i := 0; i < 44100; i++ {
 				pl.pushSample(math.NaN(), math.NaN())
 			}
-			pl.songsMutex.RUnlock()
 			continue
 		}
-
-		pos := pl.position % len(pl.songs)
-		pl.position = pl.position % len(pl.songs)
-		filename := pl.songs[pos]
-		pl.songsMutex.RUnlock()
 
 		pl.currentSong = filename
 
 		s, err := getStreamer(filename)
 		if err != nil {
 			logger.Warnf("skipping song %s in playlist: %v", filename, err)
-			if pos == pl.position {
-				pl.position++
-			}
+			pl.position++
 			continue
 		}
 
-		buf := make([][2]float64, 512)
-		first := true
-		for {
-			n, ok := len(buf), true
-			pl.callPauseToggleHandler()
-			if pl.playing {
-				n, ok = s.Stream(buf)
+		pl.pushStreamer(s)
+		pl.pusNanBreak()
+	}
+}
 
-				if first {
-					go pl.newSongHandler(pl.sampleIndexWrite, filename, int64(s.Len()))
-					first = false
-				}
+func (pl *Playlist) nextSong() (song string) {
+	pl.songsMutex.RLock()
+	defer pl.songsMutex.RUnlock()
+	if len(pl.songs) == 0 {
+		return ""
+	}
+	pos := pl.position % len(pl.songs)
+	pl.position = pos
+	return pl.songs[pos]
+}
 
-				for _, sample := range buf {
-					pl.pushSample(sample[0], sample[1])
-				}
-			} else {
-				for range buf {
-					pl.pushSample(math.NaN(), math.NaN())
-				}
+func (pl *Playlist) pushStreamer(s beep.StreamSeekCloser) {
+	buf := make([][2]float64, 512)
+	first := true
+	for {
+		n, ok := len(buf), true
+		pl.callPauseToggleHandler()
+		if pl.playing {
+			n, ok = s.Stream(buf)
+
+			if first {
+				go pl.newSongHandler(pl.sampleIndexWrite, pl.currentSong, int64(s.Len()))
+				first = false
 			}
 
-			if 0 < len(pl.forceNext) && <-pl.forceNext {
-				break
-			}
-			if !ok || n < len(buf) {
-				if pos == pl.position {
-					pl.position++
-				}
-				break
+			pl.pushBuffer(buf[:n])
+		} else {
+			for range buf {
+				pl.pushSample(math.NaN(), math.NaN())
 			}
 		}
-		for i := 0; i < pl.nanBreakSize; i++ {
-			pl.pushSample(math.NaN(), math.NaN())
+
+		if 0 < len(pl.forceNext) && <-pl.forceNext {
+			break
 		}
+
+		if !ok || n < len(buf) {
+			pl.position++
+			break
+		}
+	}
+}
+
+func (pl *Playlist) pushBuffer(buffer [][2]float64) {
+	for _, sample := range buffer {
+		pl.pushSample(sample[0], sample[1])
+	}
+}
+
+func (pl *Playlist) pusNanBreak() {
+	for i := 0; i < pl.nanBreakSize; i++ {
+		pl.pushSample(math.NaN(), math.NaN())
 	}
 }
 
