@@ -119,26 +119,47 @@ func TestFilterSongs(t *testing.T) {
 	}
 }
 
+type isDirFileCase struct {
+	name   string
+	isDir  bool
+	exists bool
+}
+
+var isDirFileCases = []isDirFileCase{
+	{name: "non-existent", isDir: false, exists: false},
+	{name: "file1", isDir: false, exists: true},
+	{name: "dir1", isDir: true, exists: true},
+}
+
 func TestIsDir(t *testing.T) {
-	assert.False(t, IsDir(path.Join(testDir, "non-existent")), "IsDir returns true for a non-existent file")
-	assert.False(t, IsDir(path.Join(testDir, "file1")), "IsDir returns true for a file")
-	assert.True(t, IsDir(path.Join(testDir, "dir1")), "IsDir returns false for a dir")
+	testIsDirFileCases(t, "IsDir", true, IsDir)
 }
 
 func TestIsFile(t *testing.T) {
-	assert.False(t, IsFile(path.Join(testDir, "non-existent")), "IsDir returns true for a non-existent file")
-	assert.True(t, IsFile(path.Join(testDir, "file1")), "IsDir returns false for a file")
-	assert.False(t, IsFile(path.Join(testDir, "dir1")), "IsDir returns true for a dir")
+	testIsDirFileCases(t, "IsFile", false, IsFile)
 }
 
 func TestCheckDir(t *testing.T) {
-	assert.NotNil(t, CheckDir(path.Join(testDir, "non-existent")), "CheckDir returned no error for a non-existent file")
-	assert.NotNil(t, CheckDir(path.Join(testDir, "file1")), "CheckDir returned no error for a file")
-	assert.Nil(t, CheckDir(path.Join(testDir, "dir1")), "CheckDir returned an error for a dir")
+	testIsDirFileCases(t, "CheckDir", true, func(s string) bool { return CheckDir(s) == nil })
 }
 
 func TestCheckFile(t *testing.T) {
-	assert.NotNil(t, CheckFile(path.Join(testDir, "non-existent")), "CheckFile returned no error for a non-existent file")
-	assert.Nil(t, CheckFile(path.Join(testDir, "file1")), "CheckFile returned an error for a file")
-	assert.NotNil(t, CheckFile(path.Join(testDir, "dir1")), "CheckFile returned no error for a dir")
+	testIsDirFileCases(t, "CheckFile", false, func(s string) bool { return CheckFile(s) == nil })
+}
+
+func testIsDirFileCases(t *testing.T, name string, checksDir bool, toTest func(string) bool) {
+	for _, c := range isDirFileCases {
+		if !c.exists {
+			assert.False(t, toTest(path.Join(testDir, c.name)), "%s returns okay for a non-existent file", name)
+		} else {
+			assert.Equal(t, checksDir == c.isDir, toTest(path.Join(testDir, c.name)), "%s returns incorrect for a %s", name, dirFileName(c.isDir))
+		}
+	}
+}
+
+func dirFileName(isDir bool) string {
+	if isDir {
+		return "dir"
+	}
+	return "file"
 }
