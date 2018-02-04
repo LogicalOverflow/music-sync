@@ -16,6 +16,7 @@ before_install:
 - go get github.com/mitchellh/gox
 - go get github.com/mattn/goveralls
 - go get github.com/axw/gocov/gocov
+- go get -u github.com/AlekSi/gocoverutil
 - sudo apt-get -qq update
 - sudo apt-get install -y libasound2-dev
 install:
@@ -28,10 +29,10 @@ before_script:
 - ./cc-test-reporter before-build
 script:
 - go test ./...
-- $GOPATH/bin/gocov test ./... > c.out
+- $GOPATH/bin/gocoverutil -coverprofile=c.out -covermode=atomic ./...
 after_script:
-- $GOPATH/bin/goveralls -service=travis-ci
 - ./cc-test-reporter after-build -t gocov --exit-code $TRAVIS_TEST_RESULT
+- $GOPATH/bin/goveralls -service=travis-ci
 
 before_deploy:
 - gox -output "build/{{.Dir}}-{{.OS}}-{{.Arch}}" -ldflags="-X github.com/LogicalOverflow/music-sync/cmd.Tag=$TRAVIS_TAG -X github.com/LogicalOverflow/music-sync/cmd.Commit=$TRAVIS_COMMIT" -os="windows" ./...
