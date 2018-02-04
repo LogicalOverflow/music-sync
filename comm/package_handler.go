@@ -25,6 +25,7 @@ type TypedPackageHandlerInterface interface {
 	HandlePauseInfo(*PauseInfo, net.Conn)
 }
 
+// Handle forwards the message and sender to the matching Handle function of TypedPackageHandlerInterface
 func (t TypedPackageHandler) Handle(message proto.Message, sender net.Conn) {
 	switch message.(type) {
 	case *TimeSyncRequest:

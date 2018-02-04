@@ -82,11 +82,12 @@ func fmtDuration(duration time.Duration) string {
 }
 
 func tcellLoop(screen tcell.Screen) {
-	w, h := screen.Size()
+	d := &drawer{Screen: screen}
+	d.w, d.h = d.Size()
 
 	running := true
 	go func() {
-		eventLoop(screen, &w, &h)
+		d.eventLoop()
 		running = false
 	}()
 
@@ -94,31 +95,14 @@ func tcellLoop(screen tcell.Screen) {
 		if !running {
 			break
 		}
-		redraw(screen, w, h)
+		redraw(d)
 	}
 
 	screen.Fini()
 }
 
-func eventLoop(screen tcell.Screen, w, h *int) {
-	for {
-		ev := screen.PollEvent()
-		switch ev := ev.(type) {
-		case *tcell.EventKey:
-			if ev.Key() == tcell.KeyCtrlC {
-				return
-			}
-		case *tcell.EventResize:
-			screen.Sync()
-			*w, *h = screen.Size()
-		default:
-			panic(fmt.Sprintf("%T", ev))
-		}
-	}
-}
-
-func redraw(screen tcell.Screen, w, h int) {
-	screen.Clear()
+func redraw(d *drawer) {
+	d.Clear()
 
 	info := currentState.Info()
 	currentSong := info.CurrentSong
@@ -136,22 +120,14 @@ func redraw(screen tcell.Screen, w, h int) {
 		songLength = time.Duration(currentSong.length) * time.Second / time.Duration(schedule.SampleRate) / time.Nanosecond
 	}
 
-	playState := "Paused"
-	if info.Playing {
-		playState = "Playing"
-	}
-
 	songLineName := ""
-	songLineArtistAlbum := ""
-
-	timeLine := fmt.Sprintf("%s/%s", fmtDuration(timeInSong), fmtDuration(songLength))
-
 	if currentSong.metadata.Title != "" {
 		songLineName = currentSong.metadata.Title
 	} else {
 		songLineName = currentSong.filename
 	}
 
+	songLineArtistAlbum := ""
 	if currentSong.metadata.Artist != "" {
 		songLineArtistAlbum = currentSong.metadata.Artist
 		if currentSong.metadata.Album != "" {
@@ -159,52 +135,60 @@ func redraw(screen tcell.Screen, w, h int) {
 		}
 	}
 
-	volumeLine := fmt.Sprintf("Volume: %06.2f%%", currentState.Volume*100)
+	timeLine := fmt.Sprintf("%s/%s", fmtDuration(timeInSong), fmtDuration(songLength))
 
-	drawString(w-len(volumeLine)-1, h-4, tcell.StyleDefault, volumeLine, screen)
-	drawString(1, h-4, tcell.StyleDefault, songLineName, screen)
-	drawString(w-len(timeLine)-1, h-3, tcell.StyleDefault, timeLine, screen)
-	drawString(1, h-3, tcell.StyleDefault, songLineArtistAlbum, screen)
+	volumeLine := fmt.Sprintf("Volume: %06.2f%%", info.Volume*100)
 
-	drawProgress(1, h-2, tcell.StyleDefault, w-2, progressInSong, screen)
+	d.drawString(d.w-len(volumeLine)-1, d.h-4, tcell.StyleDefault, volumeLine)
+	d.drawString(1, d.h-4, tcell.StyleDefault, songLineName)
+	d.drawString(d.w-len(timeLine)-1, d.h-3, tcell.StyleDefault, timeLine)
+	d.drawString(1, d.h-3, tcell.StyleDefault, songLineArtistAlbum)
 
-	drawBox(0, h-5, w, 5, tcell.StyleDefault, screen)
-	drawString(2, h-5, tcell.StyleDefault, playState, screen)
+	d.drawProgress(1, d.h-2, tcell.StyleDefault, d.w-2, progressInSong)
+
+	d.drawBox(0, d.h-5, d.w, 5, tcell.StyleDefault)
+	d.drawString(2, d.h-5, tcell.StyleDefault, info.playingString())
 
 	lyricsHeight := lyricsHistorySize
-	if h < lyricsHeight+7 {
-		lyricsHeight = h - 7
+	if d.h < lyricsHeight+7 {
+		lyricsHeight = d.h - 7
 	}
 	if 0 < lyricsHeight {
-		if currentSong.lyrics != nil && 0 < len(currentSong.lyrics) {
-			nextLine := 0
-			for ; nextLine < len(currentSong.lyrics); nextLine++ {
-				l := currentSong.lyrics[nextLine]
-				if l != nil && 0 < len(l) && int64(timeInSong/time.Millisecond) < l[0].Timestamp {
-					break
-				}
+		lines := lyricsHistory(lyricsHeight, currentSong, timeInSong)
+		for i, l := range lines {
+			d.drawString(1, d.h-7-i, tcell.StyleDefault, l)
+		}
+		d.drawBox(0, d.h-7-lyricsHeight, d.w, lyricsHeight+2, tcell.StyleDefault)
+		d.drawString(2, d.h-7-lyricsHeight, tcell.StyleDefault, "Lyrics")
+	}
+
+	d.Show()
+}
+
+func lyricsHistory(height int, song upcomingSong, timeInSong time.Duration) []string {
+	if song.lyrics != nil && 0 < len(song.lyrics) {
+		nextLine := 0
+		for ; nextLine < len(song.lyrics); nextLine++ {
+			l := song.lyrics[nextLine]
+			if l != nil && 0 < len(l) && int64(timeInSong/time.Millisecond) < l[0].Timestamp {
+				break
 			}
+		}
 
-			lines := make([]string, lyricsHeight)
+		lines := make([]string, height)
 
-			for i := range lines {
-				lines[i] = ""
-				if 0 <= nextLine-i-1 {
-					for _, atom := range currentSong.lyrics[nextLine-i-1] {
-						if atom.Timestamp < int64(timeInSong/time.Millisecond)+100 {
-							lines[i] += atom.Caption
-						}
+		for i := range lines {
+			lines[i] = ""
+			if 0 <= nextLine-i-1 {
+				for _, atom := range song.lyrics[nextLine-i-1] {
+					if atom.Timestamp < int64(timeInSong/time.Millisecond)+100 {
+						lines[i] += atom.Caption
 					}
 				}
 			}
-
-			for i, l := range lines {
-				drawString(1, h-7-i, tcell.StyleDefault, l, screen)
-			}
 		}
-		drawBox(0, h-7-lyricsHeight, w, lyricsHeight+2, tcell.StyleDefault, screen)
-		drawString(2, h-7-lyricsHeight, tcell.StyleDefault, "Lyrics", screen)
-	}
 
-	screen.Show()
+		return lines
+	}
+	return make([]string, height)
 }

@@ -1,33 +1,41 @@
 package main
 
 import (
+	"fmt"
 	"github.com/gdamore/tcell"
 	"math"
 )
 
-func drawString(x, y int, style tcell.Style, str string, screen tcell.Screen) {
-	for i, r := range str {
-		screen.SetContent(x+i, y, r, nil, style)
+type drawer struct {
+	tcell.Screen
+	w, h int
+}
+
+func (d *drawer) eventLoop() {
+	for {
+		ev := d.PollEvent()
+		switch ev := ev.(type) {
+		case *tcell.EventKey:
+			if ev.Key() == tcell.KeyCtrlC {
+				return
+			}
+		case *tcell.EventResize:
+			d.Sync()
+			d.w, d.h = d.Size()
+		default:
+			panic(fmt.Sprintf("%T", ev))
+		}
 	}
 }
 
-func drawProgress(x, y int, style tcell.Style, length int, progress float64, screen tcell.Screen) {
-	head := int(math.Floor(float64(length) * progress))
-	_, headProgress := math.Modf(float64(length) * progress)
+func (d *drawer) drawString(x, y int, style tcell.Style, str string) {
+	for i, r := range str {
+		d.SetContent(x+i, y, r, nil, style)
+	}
+}
 
-	filledRune := '█'
-	emptyRune := ' '
-	var headRune rune
-	if headProgress < 0.3 {
-		headRune = emptyRune
-	} else if headProgress < 0.7 {
-		headRune = '▌'
-	} else {
-		headRune = filledRune
-	}
-	if head == length-1 {
-		headRune = filledRune
-	}
+func (d *drawer) drawProgress(x, y int, style tcell.Style, length int, progress float64) {
+	head, filledRune, headRune, emptyRune := d.progressHead(length, progress)
 
 	for i := 0; i < length; i++ {
 		var r rune
@@ -38,22 +46,41 @@ func drawProgress(x, y int, style tcell.Style, length int, progress float64, scr
 		} else {
 			r = emptyRune
 		}
-		screen.SetContent(x+i, y, r, nil, style)
+		d.SetContent(x+i, y, r, nil, style)
 	}
 }
 
-func drawBox(x, y, w, h int, style tcell.Style, screen tcell.Screen) {
+func (d *drawer) progressHead(length int, progress float64) (head int, filledRune, headRune, emptyRune rune) {
+	head = int(math.Floor(float64(length) * progress))
+	_, headProgress := math.Modf(float64(length) * progress)
+
+	filledRune = '█'
+	emptyRune = ' '
+
+	if head == length-1 {
+		headRune = filledRune
+	} else if headProgress < 0.3 {
+		headRune = emptyRune
+	} else if headProgress < 0.7 {
+		headRune = '▌'
+	} else {
+		headRune = filledRune
+	}
+	return
+}
+
+func (d *drawer) drawBox(x, y, w, h int, style tcell.Style) {
 	for i := x; i < x+w; i++ {
-		screen.SetContent(i, y+h-1, '═', nil, style)
-		screen.SetContent(i, y, '═', nil, style)
+		d.SetContent(i, y+h-1, '═', nil, style)
+		d.SetContent(i, y, '═', nil, style)
 	}
 
 	for j := y; j < y+h; j++ {
-		screen.SetContent(x, j, '║', nil, style)
-		screen.SetContent(x+w-1, j, '║', nil, style)
+		d.SetContent(x, j, '║', nil, style)
+		d.SetContent(x+w-1, j, '║', nil, style)
 	}
-	screen.SetContent(x, y, '╔', nil, style)
-	screen.SetContent(x+w-1, y, '╗', nil, style)
-	screen.SetContent(x, y+h-1, '╚', nil, style)
-	screen.SetContent(x+w-1, y+h-1, '╝', nil, style)
+	d.SetContent(x, y, '╔', nil, style)
+	d.SetContent(x+w-1, y, '╗', nil, style)
+	d.SetContent(x, y+h-1, '╚', nil, style)
+	d.SetContent(x+w-1, y+h-1, '╝', nil, style)
 }

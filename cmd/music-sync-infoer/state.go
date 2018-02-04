@@ -131,8 +131,6 @@ afterCalcSample:
 		Now:                 now,
 		Playing:             playing,
 		Volume:              s.Volume,
-		TIC:                 timeInChunk,
-		SIC:                 sampleInChunk,
 	}
 }
 
@@ -143,7 +141,13 @@ type playbackInformation struct {
 	Now                 int64
 	Playing             bool
 	Volume              float64
-	TIC, SIC            int64
+}
+
+func (pbi playbackInformation) playingString() string {
+	if pbi.Playing {
+		return "Playing"
+	}
+	return "Paused"
 }
 
 var currentState = &state{Songs: make([]upcomingSong, 0), Chunks: make([]upcomingChunk, 0)}
