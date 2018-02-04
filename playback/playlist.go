@@ -205,10 +205,12 @@ func (pl *Playlist) CurrentSong() string {
 	return pl.currentSong
 }
 
-// Sets the new song handler, which is called every time the playlist begins playing a new song
+// SetNewSongHandler sets the new song handler, which is called every time the playlist begins playing a new song
 func (pl *Playlist) SetNewSongHandler(nsh func(startSampleIndex uint64, filename string, songLength int64)) {
 	pl.newSongHandler = nsh
 }
+
+// SetPauseToggleHandler sets the pause toggle handler, which is called every time the playlist is paused/resumed
 func (pl *Playlist) SetPauseToggleHandler(psh func(playing bool, sample uint64)) {
 	pl.pauseToggleHandler = psh
 }

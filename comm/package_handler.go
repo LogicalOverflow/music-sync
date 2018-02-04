@@ -6,7 +6,7 @@ import (
 	"net"
 )
 
-// Typed package handler calls the handle functions of TypedPackageHandlerInterface
+// TypedPackageHandler calls the handle functions of TypedPackageHandlerInterface
 type TypedPackageHandler struct {
 	TypedPackageHandlerInterface
 }

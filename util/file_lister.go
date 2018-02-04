@@ -114,7 +114,7 @@ func CheckFile(p string) error {
 	return nil
 }
 
-// IsFile returns true if the path points to a existing directory
+// IsDir returns true if the path points to an existing directory
 func IsDir(p string) bool {
 	if fi, err := os.Stat(p); err != nil || !fi.IsDir() {
 		return false
@@ -122,7 +122,7 @@ func IsDir(p string) bool {
 	return true
 }
 
-// IsFile returns true if the path points to a existing file
+// IsFile returns true if the path points to an existing file
 func IsFile(p string) bool {
 	if fi, err := os.Stat(p); err != nil || fi.IsDir() {
 		return false

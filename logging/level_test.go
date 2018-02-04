@@ -25,4 +25,3 @@ func TestLevelByName(t *testing.T) {
 		assert.Equal(t, c.level, actual, "LevelByName(%s) returned the wrong level", c.name)
 	}
 }
-
