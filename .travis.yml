@@ -33,7 +33,7 @@ before_script:
 script:
 - go test ./...
 - ./coverage.sh
-- g$GOPATH/bin/over
+- $GOPATH/bin/gover
 after_script:
 - $GOPATH/bin/goveralls -service=travis-ci -coverprofile=gover.coverprofile
 - $GOPATH/bin/gocov convert gover.coverprofile > c.out
