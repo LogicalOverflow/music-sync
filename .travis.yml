@@ -36,7 +36,7 @@ script:
 - gover
 - $GOPATH/bin/goveralls -service=travis-ci -coverprofile=gover.coverprofile
 after_script:
-- cp gover.coverprofile c.out
+- gocov convert gover.coverprofile > c.out
 - ./cc-test-reporter after-build -t gocov --exit-code $TRAVIS_TEST_RESULT
 
 before_deploy:
