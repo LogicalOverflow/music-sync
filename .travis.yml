@@ -32,7 +32,7 @@ before_script:
 - ./cc-test-reporter before-build
 script:
 - go test ./...
-- ./run_tests.sh
+- ./coverage.sh
 - gover
 - $GOPATH/bin/goveralls -service=travis-ci -coverprofile=gover.coverprofile
 after_script:
