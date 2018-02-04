@@ -16,7 +16,7 @@ before_install:
 - go get github.com/mitchellh/gox
 - go get github.com/mattn/goveralls
 - go get github.com/axw/gocov
-- go get github.com/modocache/gover
+- go get github.com/axw/gocov/gocov
 - sudo apt-get -qq update
 - sudo apt-get install -y libasound2-dev
 install:
