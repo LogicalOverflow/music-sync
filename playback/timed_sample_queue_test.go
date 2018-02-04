@@ -122,50 +122,37 @@ func TestEmpty(t *testing.T) {
 }
 
 func TestAddRemoveAsync(t *testing.T) {
-	q := newTestQueue()
 	var wg sync.WaitGroup
-	wg.Add(2)
-	go func() {
+	var q *timedSampleQueue
+
+	filler := func(q *timedSampleQueue) {
 		defer wg.Done()
 		for i := 0; i < 4*testQueueSize; i++ {
 			q.Add([2]float64{float64(i), float64(i)}, int64(i))
 		}
-	}()
-
-	go func() {
+	}
+	remover := func(q *timedSampleQueue, firstOperation string) {
 		defer wg.Done()
 		for i := 0; i < 4*testQueueSize; i++ {
 			sam, ti := q.Remove()
 
-			assert.Equal(t, float64(i), sam[0], "async removing the %d-th time while first filling did not yield the correct element (sample[0])", i+1)
-			assert.Equal(t, float64(i), sam[1], "async removing the %d-th time while first filling did not yield the correct element (sample[1])", i+1)
-			assert.Equal(t, int64(i), ti, "async removing the %d-th time while first filling did not yield the correct element (time)", i+1)
+			assert.Equal(t, float64(i), sam[0], "async removing the %d-th time while first %s did not yield the correct element (sample[0])", i+1, firstOperation)
+			assert.Equal(t, float64(i), sam[1], "async removing the %d-th time while first %s did not yield the correct element (sample[1])", i+1, firstOperation)
+			assert.Equal(t, int64(i), ti, "async removing the %d-th time while first %s did not yield the correct element (time)", i+1, firstOperation)
 		}
-	}()
+	}
 
+	q = newTestQueue()
+	wg.Add(2)
+	go filler(q)
+	go remover(q, "filling")
 	wg.Wait()
 	assert.True(t, q.empty(), "after async adding and removing %d elements while first filling, queue did not claim to be empty", 4*testQueueSize)
 
 	q = newTestQueue()
 	wg.Add(2)
-	go func() {
-		defer wg.Done()
-		for i := 0; i < 4*testQueueSize; i++ {
-			sam, ti := q.Remove()
-
-			assert.Equal(t, float64(i), sam[0], "async removing the %d-th time while first removing did not yield the correct element (sample[0])", i+1)
-			assert.Equal(t, float64(i), sam[1], "async removing the %d-th time while first removing did not yield the correct element (sample[1])", i+1)
-			assert.Equal(t, int64(i), ti, "async removing the %d-th time while first removing did not yield the correct element (time)", i+1)
-		}
-	}()
-
-	go func() {
-		defer wg.Done()
-		for i := 0; i < 4*testQueueSize; i++ {
-			q.Add([2]float64{float64(i), float64(i)}, int64(i))
-		}
-	}()
-
+	go remover(q, "removing")
+	go filler(q)
 	wg.Wait()
 	assert.True(t, q.empty(), "after async adding and removing %d elements while first removing, queue did not claim to be empty", 4*testQueueSize)
 }
