@@ -43,20 +43,25 @@ func (ss *serverState) createClientHandler() func(comm.Channel, comm.MessageSend
 	}
 }
 
+func toWireLyrics(lyrics []metadata.LyricsLine) []*comm.NewSongInfo_SongLyricsLine {
+	wireLyrics := make([]*comm.NewSongInfo_SongLyricsLine, len(lyrics))
+	for i, l := range lyrics {
+		wireLine := make([]*comm.NewSongInfo_SongLyricsAtom, len(l))
+		for j, a := range l {
+			wireLine[j] = &comm.NewSongInfo_SongLyricsAtom{
+				Timestamp: a.Timestamp,
+				Caption:   a.Caption,
+			}
+		}
+		wireLyrics[i] = &comm.NewSongInfo_SongLyricsLine{Atoms: wireLine}
+	}
+	return wireLyrics
+}
+
 func (ss *serverState) createNewSongHandler() func(uint64, string, int64) {
 	return func(startSampleIndex uint64, filename string, songLength int64) {
 		lyrics := ss.lyricsProvider.CollectLyrics(filename)
-		wireLyrics := make([]*comm.NewSongInfo_SongLyricsLine, len(lyrics))
-		for i, l := range lyrics {
-			wireLine := make([]*comm.NewSongInfo_SongLyricsAtom, len(l))
-			for j, a := range l {
-				wireLine[j] = &comm.NewSongInfo_SongLyricsAtom{
-					Timestamp: a.Timestamp,
-					Caption:   a.Caption,
-				}
-			}
-			wireLyrics[i] = &comm.NewSongInfo_SongLyricsLine{Atoms: wireLine}
-		}
+		wireLyrics := toWireLyrics(lyrics)
 
 		md := ss.metadataProvider.CollectMetadata(filename)
 
@@ -83,27 +88,33 @@ func (ss *serverState) createPauseToggleHandler() func(bool, uint64) {
 		}
 		go func(pause *comm.PauseInfo) {
 			ss.pausesMutex.Lock()
+			defer ss.pausesMutex.Unlock()
 			ss.pauses = append(ss.pauses, pause)
-			if ss.newestSong != nil {
-				passed := 0
-				for i, p := range ss.pauses {
-					if p.ToggleSampleIndex < ss.newestSong.FirstSampleOfSongIndex && p.Playing {
-						passed = i
-					} else if ss.newestSong.FirstSampleOfSongIndex < p.ToggleSampleIndex {
-						break
-					}
-				}
-				if 0 < passed {
-					copy(ss.pauses, ss.pauses[passed:])
-					for i := len(ss.pauses) - passed; i < len(ss.pauses); i++ {
-						ss.pauses[i] = nil
-					}
-					ss.pauses = ss.pauses[:len(ss.pauses)-passed]
-				}
-			}
-			ss.pausesMutex.Unlock()
+			go ss.removeOldPauses()
 		}(pause)
 		ss.sender.SendMessage(pause)
+	}
+}
+
+func (ss *serverState) removeOldPauses() {
+	ss.pausesMutex.Lock()
+	defer ss.pausesMutex.Unlock()
+	if ss.newestSong != nil {
+		passed := 0
+		for i, p := range ss.pauses {
+			if p.ToggleSampleIndex < ss.newestSong.FirstSampleOfSongIndex && p.Playing {
+				passed = i
+			} else if ss.newestSong.FirstSampleOfSongIndex < p.ToggleSampleIndex {
+				break
+			}
+		}
+		if 0 < passed {
+			copy(ss.pauses, ss.pauses[passed:])
+			for i := len(ss.pauses) - passed; i < len(ss.pauses); i++ {
+				ss.pauses[i] = nil
+			}
+			ss.pauses = ss.pauses[:len(ss.pauses)-passed]
+		}
 	}
 }
 

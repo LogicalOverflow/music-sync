@@ -10,6 +10,35 @@ import (
 	"strings"
 )
 
+func parseFloatParam(args []string, index int) (float64, bool) {
+	if len(args) <= index {
+		return 0, false
+	}
+	v, err := strconv.ParseFloat(args[index], 64)
+	if err != nil {
+		return 0, false
+	}
+	return v, true
+}
+
+func parseStringParam(args []string, index int) (string, bool) {
+	if len(args) <= index {
+		return "", false
+	}
+	return args[index], false
+}
+
+func parseIntParam(args []string, index int) (int, bool) {
+	if len(args) <= index {
+		return 0, false
+	}
+	v, err := strconv.Atoi(args[index])
+	if err != nil {
+		return 0, false
+	}
+	return v, true
+}
+
 func (ss *serverState) queueCommand() ssh.Command {
 	return ssh.Command{
 		Name:  "queue",
@@ -19,7 +48,11 @@ func (ss *serverState) queueCommand() ssh.Command {
 			if len(args) != 2 && len(args) != 1 {
 				return "", false
 			}
-			songPattern := args[0]
+			songPattern, ok := parseStringParam(args, 0)
+			if !ok {
+				return "", false
+			}
+
 			songs, err := util.ListGlobFiles(playback.AudioDir, songPattern)
 			if err != nil {
 				return fmt.Sprintf("glob pattern is invalid: %v", err), true
@@ -29,18 +62,15 @@ func (ss *serverState) queueCommand() ssh.Command {
 				return fmt.Sprintf("no song matches the glob pattern %s", songPattern), true
 			}
 
-			if len(args) == 1 {
-				for _, s := range songs {
-					ss.playlist.AddSong(s)
-				}
+			var insert func(string, int)
+			if pos, ok := parseIntParam(args, 1); ok {
+				insert = func(s string, i int) { ss.playlist.InsertSong(s, pos+i) }
 			} else {
-				pos, err := strconv.Atoi(args[1])
-				if err != nil {
-					return "", false
-				}
-				for i, s := range songs {
-					ss.playlist.InsertSong(s, pos+i)
-				}
+				insert = func(s string, _ int) { ss.playlist.AddSong(s) }
+			}
+
+			for i, s := range songs {
+				insert(s, i)
 			}
 			return fmt.Sprintf("%d song(s) added to playlist: %s", len(songs), strings.Join(songs, ", ")), true
 		},
@@ -99,11 +129,8 @@ func (ss *serverState) removeCommand() ssh.Command {
 		Usage: "position",
 		Info:  "removes a song from the playlist",
 		Exec: func(args []string) (string, bool) {
-			if len(args) != 1 {
-				return "", false
-			}
-			pos, err := strconv.Atoi(args[0])
-			if err != nil {
+			pos, ok := parseIntParam(args, 0)
+			if !ok {
 				return "", false
 			}
 			song := ss.playlist.RemoveSong(pos)
@@ -118,15 +145,12 @@ func (ss *serverState) jumpCommand() ssh.Command {
 		Usage: "position",
 		Info:  "jumps in the playlist",
 		Exec: func(args []string) (string, bool) {
-			if len(args) != 1 {
-				return "", false
-			}
-			pos, err := strconv.Atoi(args[0])
-			if err != nil {
+			pos, ok := parseIntParam(args, 0)
+			if !ok {
 				return "", false
 			}
 			ss.playlist.SetPos(pos)
-			return "jumped", true
+			return fmt.Sprintf("jumped to %s", pos), true
 		},
 	}
 }
@@ -137,12 +161,9 @@ func (ss *serverState) volumeCommand() ssh.Command {
 		Usage: "volume",
 		Info:  "set the playback volume",
 		Exec: func(args []string) (string, bool) {
-			if len(args) != 1 {
-				return "", false
-			}
-			var err error
-			ss.volume, err = strconv.ParseFloat(args[0], 64)
-			if err != nil {
+			var ok bool
+			ss.volume, ok = parseFloatParam(args, 0)
+			if !ok {
 				return "", false
 			}
 			if err := ss.sender.SendMessage(&comm.SetVolumeRequest{Volume: ss.volume}); err != nil {
@@ -154,25 +175,27 @@ func (ss *serverState) volumeCommand() ssh.Command {
 }
 
 func (ss *serverState) pauseCommand() ssh.Command {
-	return ssh.Command{
-		Name:  "pause",
-		Usage: "",
-		Info:  "pauses playback",
-		Exec: func([]string) (string, bool) {
-			ss.playlist.SetPlaying(false)
-			return "playback paused", true
-		},
-	}
+	return ss.playbackSetCommand(false)
 }
 
 func (ss *serverState) resumeCommand() ssh.Command {
+	return ss.playbackSetCommand(true)
+}
+
+func (ss *serverState) playbackSetCommand(targetPlaying bool) ssh.Command {
+	var action string
+	if targetPlaying {
+		action = "resume"
+	} else {
+		action = "pause"
+	}
 	return ssh.Command{
-		Name:  "resume",
+		Name:  action,
 		Usage: "",
-		Info:  "resumes playback",
+		Info:  action + "s playback",
 		Exec: func([]string) (string, bool) {
-			ss.playlist.SetPlaying(true)
-			return "playback resumed", true
+			ss.playlist.SetPlaying(targetPlaying)
+			return "playback " + action + "d", true
 		},
 	}
 }
