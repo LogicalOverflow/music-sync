@@ -15,7 +15,6 @@ branches:
 before_install:
 - go get github.com/mitchellh/gox
 - go get github.com/mattn/goveralls
-- go get github.com/modocache/gover
 - go get github.com/axw/gocov/gocov
 - sudo apt-get -qq update
 - sudo apt-get install -y libasound2-dev
@@ -26,19 +25,13 @@ install:
 - chmod +x ./cc-test-reporter
 
 before_script:
-- echo "#!/bin/sh" > ./coverage.sh
-- go list -f "{{if gt (len .TestGoFiles) 0}}go test -covermode atomic -coverprofile {{.Dir}}.coverprofile -coverpkg ./... {{.ImportPath}}{{end}}" ./... | tee -a ./coverage.sh
-- chmod +x ./coverage.sh
 - ./cc-test-reporter before-build
 script:
 - go test ./...
-- ./coverage.sh
-- $GOPATH/bin/gover
+- $GOPATH/bin/gocov test ./... > c.out
 after_script:
-- $GOPATH/bin/goveralls -service=travis-ci -coverprofile=gover.coverprofile
-- $GOPATH/bin/gocov convert gover.coverprofile > c.out
-- ./cc-test-reporter format-coverage --input-type gocov c.out
-- ./cc-test-reporter upload-coverage
+- $GOPATH/bin/goveralls -service=travis-ci
+- ./cc-test-reporter after-build -t gocov --exit-code $TRAVIS_TEST_RESULT
 
 before_deploy:
 - gox -output "build/{{.Dir}}-{{.OS}}-{{.Arch}}" -ldflags="-X github.com/LogicalOverflow/music-sync/cmd.Tag=$TRAVIS_TAG -X github.com/LogicalOverflow/music-sync/cmd.Commit=$TRAVIS_COMMIT" -os="windows" ./...
