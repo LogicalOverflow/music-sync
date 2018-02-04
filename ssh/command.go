@@ -39,80 +39,84 @@ func (command Command) usage() string {
 	return "Usage: " + command.Name + " " + command.Usage
 }
 
+var helpCommand = Command{
+	Name:  "help",
+	Usage: "[command name]",
+	Info:  "retrieves help for a command",
+	Exec: func(args []string) (string, bool) {
+		if len(args) == 0 {
+			usages := make([]string, 0, len(commands))
+			for _, c := range commands {
+				usages = append(usages, fmt.Sprintf("%-15s %s", c.Name, c.Info))
+			}
+			usages = append(usages,
+				fmt.Sprintf("%-15s %s", "clear", "Clears the terminal"),
+				fmt.Sprintf("%-15s %s", "exit", "Closes the connection"),
+			)
+
+			return strings.Join(usages, "\n"), true
+		}
+
+		var target *Command
+		for _, c := range commands {
+			if c.Name == args[0] {
+				target = &c
+			}
+		}
+		if target == nil {
+			switch args[0] {
+			case "clear":
+				return "clear: Clears the terminal\nclear", true
+			case "exit":
+				return "exit: Closes the connection\nexit", true
+			default:
+				return fmt.Sprintf("Command %s does not exist.", args[0]), true
+			}
+		}
+		return target.Name + ": " + target.Info + "\n" + target.usage(), true
+	},
+	Options: func(prefix string, arg int) []string {
+		if arg != 0 {
+			return []string{}
+		}
+		options := []string{"clear", "exit"}
+		for _, c := range commands {
+			if strings.HasSuffix(c.Name, prefix) {
+				options = append(options, c.Name)
+			}
+		}
+		return options
+	},
+}
+
+var lsCommand = Command{
+	Name:  "ls",
+	Usage: "[sub directory]",
+	Info:  "lists all songs in the music (sub) directory",
+	Exec: func(args []string) (string, bool) {
+		subDir := ""
+		if 0 < len(args) {
+			subDir = args[0]
+		}
+		songs := util.FilterSongs(util.ListAllFiles(playback.AudioDir, subDir))
+		return strings.Join(songs, "\n"), true
+	},
+	Options: func(prefix string, arg int) []string {
+		if arg != 0 {
+			return []string{}
+		}
+		songs := util.ListAllSubDirs(playback.AudioDir)
+		options := make([]string, 0, len(songs))
+		for _, song := range songs {
+			if strings.HasPrefix(song, prefix) {
+				options = append(options, song)
+			}
+		}
+		return options
+	},
+}
+
 func init() {
-	RegisterCommand(Command{
-		Name:  "help",
-		Usage: "[command name]",
-		Info:  "retrieves help for a command",
-		Exec: func(args []string) (string, bool) {
-			if len(args) == 0 {
-				usages := make([]string, 0, len(commands))
-				for _, c := range commands {
-					usages = append(usages, fmt.Sprintf("%-15s %s", c.Name, c.Info))
-				}
-				usages = append(usages,
-					fmt.Sprintf("%-15s %s", "clear", "Clears the terminal"),
-					fmt.Sprintf("%-15s %s", "exit", "Closes the connection"),
-				)
-
-				return strings.Join(usages, "\n"), true
-			}
-
-			var target *Command
-			for _, c := range commands {
-				if c.Name == args[0] {
-					target = &c
-				}
-			}
-			if target == nil {
-				switch args[0] {
-				case "clear":
-					return "clear: Clears the terminal\nclear", true
-				case "exit":
-					return "exit: Closes the connection\nexit", true
-				default:
-					return fmt.Sprintf("Command %s does not exist.", args[0]), true
-				}
-			}
-			return target.Name + ": " + target.Info + "\n" + target.usage(), true
-		},
-		Options: func(prefix string, arg int) []string {
-			if arg != 0 {
-				return []string{}
-			}
-			options := []string{"clear", "exit"}
-			for _, c := range commands {
-				if strings.HasSuffix(c.Name, prefix) {
-					options = append(options, c.Name)
-				}
-			}
-			return options
-		},
-	})
-	RegisterCommand(Command{
-		Name:  "ls",
-		Usage: "[sub directory]",
-		Info:  "lists all songs in the music (sub) directory",
-		Exec: func(args []string) (string, bool) {
-			subDir := ""
-			if 0 < len(args) {
-				subDir = args[0]
-			}
-			songs := util.FilterSongs(util.ListAllFiles(playback.AudioDir, subDir))
-			return strings.Join(songs, "\n"), true
-		},
-		Options: func(prefix string, arg int) []string {
-			if arg != 0 {
-				return []string{}
-			}
-			songs := util.ListAllSubDirs(playback.AudioDir)
-			options := make([]string, 0, len(songs))
-			for _, song := range songs {
-				if strings.HasPrefix(song, prefix) {
-					options = append(options, song)
-				}
-			}
-			return options
-		},
-	})
+	RegisterCommand(helpCommand)
+	RegisterCommand(lsCommand)
 }
