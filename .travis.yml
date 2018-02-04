@@ -37,7 +37,8 @@ script:
 after_script:
 - $GOPATH/bin/goveralls -service=travis-ci -coverprofile=gover.coverprofile
 - $GOPATH/bin/gocov convert gover.coverprofile > c.out
-- ./cc-test-reporter after-build -t gocov --exit-code $TRAVIS_TEST_RESULT
+- ./cc-test-reporter format-coverage --input-type gocov c.out
+- ./cc-test-reporter upload-coverage
 
 before_deploy:
 - gox -output "build/{{.Dir}}-{{.OS}}-{{.Arch}}" -ldflags="-X github.com/LogicalOverflow/music-sync/cmd.Tag=$TRAVIS_TAG -X github.com/LogicalOverflow/music-sync/cmd.Commit=$TRAVIS_COMMIT" -os="windows" ./...
