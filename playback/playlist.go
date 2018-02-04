@@ -98,7 +98,7 @@ func (pl *Playlist) StreamLoop() {
 func (pl *Playlist) pushSample(low, high float64) {
 	pl.low <- low
 	pl.high <- high
-	pl.sampleIndexWrite += 1
+	pl.sampleIndexWrite++
 }
 
 func (pl *Playlist) callPauseToggleHandler() {

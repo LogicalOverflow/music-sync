@@ -65,6 +65,7 @@ func ListAllSubDirs(dir string) []string {
 	return dirs
 }
 
+// ListGlobFiles lists all files in a directory matching the provided glob pattern
 func ListGlobFiles(dir, pattern string) ([]string, error) {
 	matches, err := filepath.Glob(filepath.Join(dir, pattern))
 	if err != nil {
