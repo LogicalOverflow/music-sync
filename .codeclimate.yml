@@ -1,0 +1,4 @@
+exclude_patterns:
+- '*.pb.go'
+- 'ssh/parser/shell_parser/**'
+- 'util/_file_lister_test_files/**'
