@@ -1,3 +1,4 @@
 .idea/
 audio/
 build/
+**.coverprofile
