@@ -32,13 +32,15 @@ before_script:
 - ./cc-test-reporter before-build
 script:
 - go test ./...
-- gox -output "build/{{.Dir}}-{{.OS}}-{{.Arch}}" -ldflags="-X github.com/LogicalOverflow/music-sync/cmd.Tag=$TRAVIS_TAG -X github.com/LogicalOverflow/music-sync/cmd.Commit=$TRAVIS_COMMIT" -os="windows" ./...
 - ./run_tests.sh
+- gover
 - $GOPATH/bin/goveralls -service=travis-ci -coverprofile=gover.coverprofile
 after_script:
 - cp gover.coverprofile c.out
 - ./cc-test-reporter after-build -t gocov --exit-code $TRAVIS_TEST_RESULT
 
+before_deploy:
+- gox -output "build/{{.Dir}}-{{.OS}}-{{.Arch}}" -ldflags="-X github.com/LogicalOverflow/music-sync/cmd.Tag=$TRAVIS_TAG -X github.com/LogicalOverflow/music-sync/cmd.Commit=$TRAVIS_COMMIT" -os="windows" ./...
 deploy:
   provider: releases
   api_key:
