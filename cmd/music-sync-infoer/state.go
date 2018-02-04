@@ -49,6 +49,19 @@ func (s *state) Info() *playbackInformation {
 
 	pausesInCurrentSong, playing := s.pausesInCurrentSong(sample, currentSong)
 
+	songLength := time.Duration(0)
+	timeInSong := time.Duration(0)
+	progressInSong := float64(0)
+
+	if currentSong.startIndex != 0 && int64(currentSong.startIndex) < sample {
+		sampleInSong := sample - int64(currentSong.startIndex) - pausesInCurrentSong
+		timeInSong = time.Duration(sampleInSong) * time.Second / time.Duration(schedule.SampleRate) / time.Nanosecond
+		if 0 < currentSong.length {
+			progressInSong = float64(sampleInSong) / float64(currentSong.length)
+		}
+		songLength = time.Duration(currentSong.length) * time.Second / time.Duration(schedule.SampleRate) / time.Nanosecond
+	}
+
 	return &playbackInformation{
 		CurrentSong:         currentSong,
 		CurrentSample:       sample,
@@ -56,6 +69,9 @@ func (s *state) Info() *playbackInformation {
 		Now:                 now,
 		Playing:             playing,
 		Volume:              s.Volume,
+		SongLength:          songLength,
+		TimeInSong:          timeInSong,
+		ProgressInSong:      progressInSong,
 	}
 }
 
@@ -174,6 +190,9 @@ type playbackInformation struct {
 	Now                 int64
 	Playing             bool
 	Volume              float64
+	SongLength          time.Duration
+	TimeInSong          time.Duration
+	ProgressInSong      float64
 }
 
 func (pbi playbackInformation) playingString() string {

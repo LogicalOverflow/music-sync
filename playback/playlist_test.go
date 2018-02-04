@@ -90,47 +90,40 @@ func TestPlaylist_RemoveSong(t *testing.T) {
 		pl.songs[i] = fmt.Sprintf("song-%02d", i)
 	}
 
-	var removed []int
+	pl.RemoveSong(8)
+	assertRemoved(t, []int{8}, pl)
 
-	check := func() {
-		if assert.Equal(t, 16-len(removed), len(pl.songs), "after removing %v, playlist songs has the wrong length", removed) {
-			skipped := 0
-			for i := 0; i < 16; i++ {
-				skip := false
-				for _, r := range removed {
-					if r == i {
-						skip = true
-					}
-				}
+	pl.RemoveSong(10)
+	assertRemoved(t, []int{8, 11}, pl)
 
-				if skip {
-					skipped++
-				} else {
-					assert.Equal(t, fmt.Sprintf("song-%02d", i), pl.songs[i-skipped], "after removing %v, playlist song at index %d is incorrect", i-skipped)
+	pl.RemoveSong(1)
+	assertRemoved(t, []int{1, 8, 11}, pl)
+
+	pl.RemoveSong(-2)
+	assertRemoved(t, []int{0, 1, 8, 11}, pl)
+
+	pl.RemoveSong(22)
+	assertRemoved(t, []int{0, 1, 8, 11, 15}, pl)
+}
+
+func assertRemoved(t *testing.T, removed []int, pl *Playlist) {
+	if assert.Equal(t, 16-len(removed), len(pl.songs), "after removing %v, playlist songs has the wrong length", removed) {
+		skipped := 0
+		for i := 0; i < 16; i++ {
+			skip := false
+			for _, r := range removed {
+				if r == i {
+					skip = true
 				}
+			}
+
+			if skip {
+				skipped++
+			} else {
+				assert.Equal(t, fmt.Sprintf("song-%02d", i), pl.songs[i-skipped], "after removing %v, playlist song at index %d is incorrect", i-skipped)
 			}
 		}
 	}
-
-	removed = []int{8}
-	pl.RemoveSong(8)
-	check()
-
-	removed = []int{8, 11}
-	pl.RemoveSong(10)
-	check()
-
-	removed = []int{1, 8, 11}
-	pl.RemoveSong(1)
-	check()
-
-	removed = []int{0, 1, 8, 11}
-	pl.RemoveSong(-2)
-	check()
-
-	removed = []int{0, 1, 8, 11, 15}
-	pl.RemoveSong(22)
-	check()
 }
 
 func TestPlaylist_Fill(t *testing.T) {

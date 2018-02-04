@@ -45,6 +45,24 @@ func run(ctx *cli.Context) error {
 	)
 	lyricsHistorySize = int(ctx.Uint(cmd.FlagKey(cmd.LyricsHistorySizeFlag)))
 
+	schedule.SampleRate = sampleRate
+
+	s := createTcellScreen()
+
+	server := fmt.Sprintf("%s:%d", serverAddress, serverPort)
+	sender, err := comm.ConnectToServer(server, newInfoerPackageHandler())
+	if err != nil {
+		cli.NewExitError(err, 1)
+	}
+
+	go schedule.Infoer(sender)
+
+	tcellLoop(s)
+
+	return nil
+}
+
+func createTcellScreen() tcell.Screen {
 	tcell.SetEncodingFallback(tcell.EncodingFallbackASCII)
 	s, e := tcell.NewScreen()
 	if e != nil {
@@ -59,19 +77,7 @@ func run(ctx *cli.Context) error {
 	s.SetStyle(tcell.StyleDefault.Background(tcell.ColorBlack).Foreground(tcell.ColorWhite))
 	s.Clear()
 
-	schedule.SampleRate = sampleRate
-
-	server := fmt.Sprintf("%s:%d", serverAddress, serverPort)
-	sender, err := comm.ConnectToServer(server, newInfoerPackageHandler())
-	if err != nil {
-		cli.NewExitError(err, 1)
-	}
-
-	go schedule.Infoer(sender)
-
-	tcellLoop(s)
-
-	return nil
+	return s
 }
 
 func fmtDuration(duration time.Duration) string {
@@ -105,38 +111,29 @@ func redraw(d *drawer) {
 	d.Clear()
 
 	info := currentState.Info()
-	currentSong := info.CurrentSong
-	currentSample := info.CurrentSample
+	drawPlaybackInfo(d, info)
+	drawLyrics(d, info)
 
-	songLength := time.Duration(0)
-	timeInSong := time.Duration(0)
-	progressInSong := float64(0)
-	if currentSong.startIndex != 0 && int64(currentSong.startIndex) < currentSample {
-		sampleInSong := currentSample - int64(currentSong.startIndex) - info.PausesInCurrentSong
-		timeInSong = time.Duration(sampleInSong) * time.Second / time.Duration(schedule.SampleRate) / time.Nanosecond
-		if 0 < currentSong.length {
-			progressInSong = float64(sampleInSong) / float64(currentSong.length)
-		}
-		songLength = time.Duration(currentSong.length) * time.Second / time.Duration(schedule.SampleRate) / time.Nanosecond
-	}
+	d.Show()
+}
 
+func drawPlaybackInfo(d *drawer, info *playbackInformation) {
 	songLineName := ""
-	if currentSong.metadata.Title != "" {
-		songLineName = currentSong.metadata.Title
+	if info.CurrentSong.metadata.Title != "" {
+		songLineName = info.CurrentSong.metadata.Title
 	} else {
-		songLineName = currentSong.filename
+		songLineName = info.CurrentSong.filename
 	}
 
 	songLineArtistAlbum := ""
-	if currentSong.metadata.Artist != "" {
-		songLineArtistAlbum = currentSong.metadata.Artist
-		if currentSong.metadata.Album != "" {
-			songLineArtistAlbum += " - " + currentSong.metadata.Album
+	if info.CurrentSong.metadata.Artist != "" {
+		songLineArtistAlbum = info.CurrentSong.metadata.Artist
+		if info.CurrentSong.metadata.Album != "" {
+			songLineArtistAlbum += " - " + info.CurrentSong.metadata.Album
 		}
 	}
 
-	timeLine := fmt.Sprintf("%s/%s", fmtDuration(timeInSong), fmtDuration(songLength))
-
+	timeLine := fmt.Sprintf("%s/%s", fmtDuration(info.TimeInSong), fmtDuration(info.SongLength))
 	volumeLine := fmt.Sprintf("Volume: %06.2f%%", info.Volume*100)
 
 	d.drawString(d.w-len(volumeLine)-1, d.h-4, tcell.StyleDefault, volumeLine)
@@ -144,25 +141,25 @@ func redraw(d *drawer) {
 	d.drawString(d.w-len(timeLine)-1, d.h-3, tcell.StyleDefault, timeLine)
 	d.drawString(1, d.h-3, tcell.StyleDefault, songLineArtistAlbum)
 
-	d.drawProgress(1, d.h-2, tcell.StyleDefault, d.w-2, progressInSong)
+	d.drawProgress(1, d.h-2, tcell.StyleDefault, d.w-2, info.ProgressInSong)
 
 	d.drawBox(0, d.h-5, d.w, 5, tcell.StyleDefault)
 	d.drawString(2, d.h-5, tcell.StyleDefault, info.playingString())
+}
 
+func drawLyrics(d *drawer, info *playbackInformation) {
 	lyricsHeight := lyricsHistorySize
 	if d.h < lyricsHeight+7 {
 		lyricsHeight = d.h - 7
 	}
 	if 0 < lyricsHeight {
-		lines := lyricsHistory(lyricsHeight, currentSong, timeInSong)
+		lines := lyricsHistory(lyricsHeight, info.CurrentSong, info.TimeInSong)
 		for i, l := range lines {
 			d.drawString(1, d.h-7-i, tcell.StyleDefault, l)
 		}
 		d.drawBox(0, d.h-7-lyricsHeight, d.w, lyricsHeight+2, tcell.StyleDefault)
 		d.drawString(2, d.h-7-lyricsHeight, tcell.StyleDefault, "Lyrics")
 	}
-
-	d.Show()
 }
 
 func lyricsHistory(height int, song upcomingSong, timeInSong time.Duration) []string {
