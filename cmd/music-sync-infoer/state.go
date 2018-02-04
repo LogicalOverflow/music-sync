@@ -71,8 +71,7 @@ func (s *state) Info() *playbackInformation {
 		Volume:              s.Volume,
 		SongLength:          songLength,
 		TimeInSong:          timeInSong,
-		ProgressInSong:      progressInSong,
-	}
+		ProgressInSong:      progressInSong}
 }
 
 func (s *state) pausesInCurrentSong(sample int64, currentSong upcomingSong) (pausesInCurrentSong int64, playing bool) {

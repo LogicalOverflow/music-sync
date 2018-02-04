@@ -2,6 +2,7 @@ package comm
 
 import (
 	"bytes"
+	"github.com/golang/protobuf/proto"
 	"github.com/stretchr/testify/assert"
 	"net"
 	"testing"
@@ -42,40 +43,43 @@ func TestMultiMessageSender_SendMessage(t *testing.T) {
 				}}
 			mms.SendMessage(p)
 
-			hasAudio := false
-			hasMeta := false
-			if len(channels) == 0 {
-				hasAudio = true
-				hasMeta = true
-				assert.True(t, bytes.Equal(expectedBytes, connNoChan.Bytes()), "multiMessageSender sendMessage did not write toWire to the connection without channels for package %v", p)
-				assert.True(t, bytes.Equal(expectedBytes, connNotInDict.Bytes()), "multiMessageSender sendMessage did not write toWire to the connection not in the channels dictionary for package %v", p)
-			} else {
-				assert.Zero(t, len(connNoChan.Bytes()), "multiMessageSender sendMessage did write to the connection without channels for package %v", p)
-				assert.Zero(t, len(connNotInDict.Bytes()), "multiMessageSender sendMessage did write to the connection not in the channels dictionary for package %v", p)
-			}
-			for _, c := range channels {
-				if c == Channel_AUDIO {
-					hasAudio = true
-				}
-				if c == Channel_META {
-					hasMeta = true
-				}
-			}
-			if hasAudio {
-				assert.True(t, bytes.Equal(expectedBytes, connAudio.Bytes()), "multiMessageSender sendMessage did not write toWire to the connection with the AUDIO channel for package %v", p)
-			} else {
-				assert.Zero(t, len(connAudio.Bytes()), "multiMessageSender sendMessage did write to the connection with the AUDIO channel for package %v", p)
-			}
-			if hasMeta {
-				assert.True(t, bytes.Equal(expectedBytes, connMeta.Bytes()), "multiMessageSender sendMessage did not write toWire to the connection with the META channel for package %v", p)
-			} else {
+			hasAudio, hasMeta := hasChannels(channels)
 
-				assert.Zero(t, len(connMeta.Bytes()), "multiMessageSender sendMessage did write to the connection with the META channel for package %v", p)
-			}
+			assertSendData(t, connNoChan, expectedBytes, len(channels) == 0, "without channels", p)
+			assertSendData(t, connNotInDict, expectedBytes, len(channels) == 0, "not in the channels dictionary", p)
 
-			assert.True(t, bytes.Equal(expectedBytes, connBoth.Bytes()), "multiMessageSender sendMessage did not write toWire to the connection with both channels for package %v", p)
+			assertSendData(t, connAudio, expectedBytes, hasAudio, "with AUDIO channel", p)
+			assertSendData(t, connMeta, expectedBytes, hasMeta, "with META channel", p)
+
+			assertSendData(t, connBoth, expectedBytes, true, "with both channels", p)
 		}
 	}
+}
+
+func assertSendData(t *testing.T, conn bufferConn, data []byte, shouldSend bool, name string, p proto.Message) {
+	if shouldSend {
+		assert.True(t, bytes.Equal(data, conn.Bytes()), "multiMessageSender sendMessage did not write toWire to the connection %s for package %v", name, p)
+	} else {
+		assert.Zero(t, len(conn.Bytes()), "multiMessageSender sendMessage did write to the connection %s for package %v", name, p)
+	}
+}
+
+func hasChannels(channels []Channel) (hasAudio bool, hasMeta bool) {
+	if len(channels) == 0 {
+		return true, true
+	}
+	hasAudio = false
+	hasMeta = false
+
+	for _, c := range channels {
+		if c == Channel_AUDIO {
+			hasAudio = true
+		}
+		if c == Channel_META {
+			hasMeta = true
+		}
+	}
+	return
 }
 
 func TestMultiMessageSender_AddConn(t *testing.T) {
@@ -87,14 +91,7 @@ func TestMultiMessageSender_AddConn(t *testing.T) {
 	for i, c := range conns {
 		mms.AddConn(c)
 		assert.Equal(t, i+1, len(mms.connections), "multiMessageSender has the wrong number of connections after adding %d connections", i+i)
-		exists := false
-		for _, e := range mms.connections {
-			if e == c {
-				exists = true
-				break
-			}
-		}
-		assert.True(t, exists, "multiMessageSender connections slice does not contain the added connection after adding %d connections", i+1)
+		assert.True(t, inConnectionsSlice(c, mms.connections), "multiMessageSender connections slice does not contain the added connection after adding %d connections", i+1)
 	}
 }
 
@@ -106,17 +103,19 @@ func TestMultiMessageSender_DelConn(t *testing.T) {
 	for i, c := range conns {
 		mms.DelConn(c)
 		assert.Equal(t, len(conns)-i-1, len(mms.connections), "multiMessageSender has the wrong number of connections after deleting %d connections", i+i)
-		exists := false
-		for _, e := range mms.connections {
-			if e == c {
-				exists = true
-				break
-			}
-		}
-		assert.False(t, exists, "multiMessageSender connections slice contains the connection after deleting %d connections", i+1)
+		assert.False(t, inConnectionsSlice(c, mms.connections), "multiMessageSender connections slice contains the connection after deleting %d connections", i+1)
 	}
 
 	assert.Zero(t, len(mms.connections), "multiMessageSender contains elements after deleting all connections")
+}
+
+func inConnectionsSlice(c net.Conn, cs []net.Conn) bool {
+	for _, e := range cs {
+		if c == e {
+			return true
+		}
+	}
+	return false
 }
 
 func TestMultiMessageSender_Subscribe(t *testing.T) {
