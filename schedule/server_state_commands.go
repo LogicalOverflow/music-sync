@@ -150,7 +150,7 @@ func (ss *serverState) jumpCommand() ssh.Command {
 				return "", false
 			}
 			ss.playlist.SetPos(pos)
-			return fmt.Sprintf("jumped to %s", pos), true
+			return fmt.Sprintf("jumped to %d", pos), true
 		},
 	}
 }

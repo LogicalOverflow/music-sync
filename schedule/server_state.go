@@ -117,9 +117,10 @@ func (ss *serverState) removablePauses() int {
 	defer ss.pausesMutex.Unlock()
 	passed := 0
 	for i, p := range ss.pauses {
-		if p.ToggleSampleIndex < ss.newestSong.FirstSampleOfSongIndex && p.Playing {
+		inPast := ss.newestSong.FirstSampleOfSongIndex < p.ToggleSampleIndex
+		if !inPast && p.Playing {
 			passed = i
-		} else if ss.newestSong.FirstSampleOfSongIndex < p.ToggleSampleIndex {
+		} else if inPast {
 			break
 		}
 	}
