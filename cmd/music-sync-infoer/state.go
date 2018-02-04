@@ -41,63 +41,32 @@ func (s songsByStartIndex) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
 
 func (s *state) Info() *playbackInformation {
 	now := timing.GetSyncedTime()
-	sample := int64(-1)
-	timeInChunk := int64(-1)
-	sampleInChunk := int64(-1)
+	sample := s.currentSample(now)
 
-	s.ChunksMutex.Lock()
-	if len(s.Chunks) != 0 {
-		passed := 0
-		for ; s.Chunks[passed].endTime() < now; passed++ {
-			if len(s.Chunks) <= passed {
-				goto afterCalcSample
-			}
-		}
-		if passed != 0 {
-			copy(s.Chunks, s.Chunks[passed:])
-			for i := len(s.Chunks) - passed; i < len(s.Chunks); i++ {
-				s.Chunks[i] = upcomingChunk{}
-			}
-			s.Chunks = s.Chunks[:len(s.Chunks)-passed]
-		}
-		if len(s.Chunks) != 0 {
-			timeInChunk = now - s.Chunks[0].startTime
-			sampleInChunk = int64(time.Duration(timeInChunk) * time.Nanosecond * time.Duration(schedule.SampleRate) / time.Second)
-			sample = int64(s.Chunks[0].startIndex) + sampleInChunk
-		}
+	currentSong := s.currentSong(sample)
+
+	s.removeOldPauses(currentSong)
+
+	pausesInCurrentSong, playing := s.pausesInCurrentSong(sample, currentSong)
+
+	return &playbackInformation{
+		CurrentSong:         currentSong,
+		CurrentSample:       sample,
+		PausesInCurrentSong: pausesInCurrentSong,
+		Now:                 now,
+		Playing:             playing,
+		Volume:              s.Volume,
 	}
+}
 
-afterCalcSample:
-	s.ChunksMutex.Unlock()
+func (s *state) pausesInCurrentSong(sample int64, currentSong upcomingSong) (pausesInCurrentSong int64, playing bool) {
+	s.PausesMutex.RLock()
+	defer s.PausesMutex.RUnlock()
 
-	currentSong := upcomingSong{filename: "None", startIndex: 0, length: 0}
-	s.SongsMutex.Lock()
-	for i := len(s.Songs) - 1; 0 <= i; i-- {
-		if int64(s.Songs[i].startIndex) < sample {
-			currentSong = s.Songs[i]
-			break
-		}
-	}
-	s.SongsMutex.Unlock()
+	playing = true
+	pausesInCurrentSong = int64(0)
 
-	s.PausesMutex.Lock()
-	passed := 0
-	for i, p := range s.Pauses {
-		if p.playing && p.toggleIndex < currentSong.startIndex {
-			passed = i
-		}
-	}
-	if 0 < passed {
-		copy(s.Pauses, s.Pauses[passed:])
-		for i := len(s.Pauses) - passed; i < len(s.Pauses); i++ {
-			s.Pauses[i] = pauseToggle{}
-		}
-		s.Pauses = s.Pauses[:len(s.Pauses)-passed]
-	}
-
-	playing := true
 	pauseBegin := int64(0)
-	pausesInCurrentSong := int64(0)
 	for _, p := range s.Pauses {
 		if p.toggleIndex < uint64(sample) && playing != p.playing {
 			if p.playing {
@@ -122,15 +91,79 @@ afterCalcSample:
 		pausesInCurrentSong += sample - pauseBegin
 	}
 
-	s.PausesMutex.Unlock()
+	return
+}
 
-	return &playbackInformation{
-		CurrentSong:         currentSong,
-		CurrentSample:       sample,
-		PausesInCurrentSong: pausesInCurrentSong,
-		Now:                 now,
-		Playing:             playing,
-		Volume:              s.Volume,
+func (s *state) removeOldPauses(currentSong upcomingSong) {
+	s.PausesMutex.Lock()
+	defer s.PausesMutex.Unlock()
+
+	passed := 0
+	for i, p := range s.Pauses {
+		if p.playing && p.toggleIndex < currentSong.startIndex {
+			passed = i
+		}
+	}
+	if 0 < passed {
+		copy(s.Pauses, s.Pauses[passed:])
+		for i := len(s.Pauses) - passed; i < len(s.Pauses); i++ {
+			s.Pauses[i] = pauseToggle{}
+		}
+		s.Pauses = s.Pauses[:len(s.Pauses)-passed]
+	}
+}
+
+func (s *state) currentSong(sample int64) (currentSong upcomingSong) {
+	s.SongsMutex.Lock()
+	defer s.SongsMutex.Unlock()
+
+	currentSong = upcomingSong{filename: "None", startIndex: 0, length: 0}
+	for i := len(s.Songs) - 1; 0 <= i; i-- {
+		if int64(s.Songs[i].startIndex) < sample {
+			currentSong = s.Songs[i]
+			break
+		}
+	}
+
+	return
+}
+
+func (s *state) currentSample(now int64) (sample int64) {
+	sample = -1
+	s.removeOldChunks(now)
+
+	s.ChunksMutex.Lock()
+	defer s.ChunksMutex.Unlock()
+
+	if len(s.Chunks) != 0 {
+		timeInChunk := now - s.Chunks[0].startTime
+		sampleInChunk := int64(time.Duration(timeInChunk) * time.Nanosecond * time.Duration(schedule.SampleRate) / time.Second)
+		sample = int64(s.Chunks[0].startIndex) + sampleInChunk
+	}
+
+	return
+}
+
+func (s *state) removeOldChunks(now int64) {
+	s.ChunksMutex.Lock()
+	defer s.ChunksMutex.Unlock()
+
+	if len(s.Chunks) == 0 {
+		return
+	}
+
+	passed := 0
+	for ; s.Chunks[passed].endTime() < now; passed++ {
+		if len(s.Chunks) <= passed {
+			break
+		}
+	}
+	if passed != 0 {
+		copy(s.Chunks, s.Chunks[passed:])
+		for i := len(s.Chunks) - passed; i < len(s.Chunks); i++ {
+			s.Chunks[i] = upcomingChunk{}
+		}
+		s.Chunks = s.Chunks[:len(s.Chunks)-passed]
 	}
 }
 
