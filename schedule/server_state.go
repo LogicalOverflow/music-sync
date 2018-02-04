@@ -24,21 +24,33 @@ type serverState struct {
 	pausesMutex sync.RWMutex
 }
 
+func (ss *serverState) sendVolume(s comm.MessageSender) {
+	s.SendMessage(&comm.SetVolumeRequest{Volume: ss.volume})
+}
+
+func (ss *serverState) sendNewestSong(s comm.MessageSender) {
+	if ss.newestSong != nil {
+		s.SendMessage(ss.newestSong)
+	}
+}
+
+func (ss *serverState) sendPauses(s comm.MessageSender) {
+	ss.pausesMutex.RLock()
+	for _, p := range ss.pauses {
+		s.SendMessage(p)
+	}
+	ss.pausesMutex.RUnlock()
+}
+
 func (ss *serverState) createClientHandler() func(comm.Channel, comm.MessageSender) {
 	return func(c comm.Channel, s comm.MessageSender) {
 		switch c {
 		case comm.Channel_AUDIO:
-			s.SendMessage(&comm.SetVolumeRequest{Volume: ss.volume})
+			ss.sendVolume(s)
 		case comm.Channel_META:
-			s.SendMessage(&comm.SetVolumeRequest{Volume: ss.volume})
-			if ss.newestSong != nil {
-				s.SendMessage(ss.newestSong)
-			}
-			ss.pausesMutex.RLock()
-			for _, p := range ss.pauses {
-				s.SendMessage(p)
-			}
-			ss.pausesMutex.RUnlock()
+			ss.sendVolume(s)
+			ss.sendNewestSong(s)
+			ss.sendPauses(s)
 		}
 	}
 }
@@ -96,25 +108,35 @@ func (ss *serverState) createPauseToggleHandler() func(bool, uint64) {
 	}
 }
 
-func (ss *serverState) removeOldPauses() {
+func (ss *serverState) removablePauses() int {
+	if ss.newestSong == nil {
+		return 0
+	}
+
 	ss.pausesMutex.Lock()
 	defer ss.pausesMutex.Unlock()
-	if ss.newestSong != nil {
-		passed := 0
-		for i, p := range ss.pauses {
-			if p.ToggleSampleIndex < ss.newestSong.FirstSampleOfSongIndex && p.Playing {
-				passed = i
-			} else if ss.newestSong.FirstSampleOfSongIndex < p.ToggleSampleIndex {
-				break
-			}
+	passed := 0
+	for i, p := range ss.pauses {
+		if p.ToggleSampleIndex < ss.newestSong.FirstSampleOfSongIndex && p.Playing {
+			passed = i
+		} else if ss.newestSong.FirstSampleOfSongIndex < p.ToggleSampleIndex {
+			break
 		}
-		if 0 < passed {
-			copy(ss.pauses, ss.pauses[passed:])
-			for i := len(ss.pauses) - passed; i < len(ss.pauses); i++ {
-				ss.pauses[i] = nil
-			}
-			ss.pauses = ss.pauses[:len(ss.pauses)-passed]
+	}
+	return passed
+}
+
+func (ss *serverState) removeOldPauses() {
+	removable := ss.removablePauses()
+	if 0 < removable {
+		ss.pausesMutex.Lock()
+		defer ss.pausesMutex.Unlock()
+
+		copy(ss.pauses, ss.pauses[removable:])
+		for i := len(ss.pauses) - removable; i < len(ss.pauses); i++ {
+			ss.pauses[i] = nil
 		}
+		ss.pauses = ss.pauses[:len(ss.pauses)-removable]
 	}
 }
 
