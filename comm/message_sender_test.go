@@ -39,8 +39,7 @@ func TestMultiMessageSender_SendMessage(t *testing.T) {
 					connNoChan: {},
 					connAudio:  {Channel_AUDIO},
 					connMeta:   {Channel_META},
-					connBoth:   {Channel_AUDIO, Channel_META},
-				}}
+					connBoth:   {Channel_AUDIO, Channel_META}}}
 			mms.SendMessage(p)
 
 			hasAudio, hasMeta := hasChannels(channels)
