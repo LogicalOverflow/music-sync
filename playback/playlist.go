@@ -79,15 +79,22 @@ func (pl *Playlist) pushStreamer(s beep.StreamSeekCloser) {
 			pl.pushNanSamples(len(buf))
 		}
 
-		if 0 < len(pl.forceNext) && <-pl.forceNext {
-			break
-		}
-
-		if !ok || n < len(buf) {
-			pl.position++
+		if pl.shouldBreakStreamerPushLoop(n, ok, len(buf)) {
 			break
 		}
 	}
+}
+
+func (pl *Playlist) shouldBreakStreamerPushLoop(n int, ok bool, bufSize int) bool {
+	if 0 < len(pl.forceNext) && <-pl.forceNext {
+		return true
+	}
+
+	if !ok || n < bufSize {
+		pl.position++
+		return true
+	}
+	return false
 }
 
 func (pl *Playlist) pushNanSamples(count int) {

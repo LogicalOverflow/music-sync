@@ -25,3 +25,7 @@ checks:
   return-statements:
     config:
       threshold: 5
+
+  method-count:
+    config:
+      threshold: 25

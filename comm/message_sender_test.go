@@ -2,7 +2,6 @@ package comm
 
 import (
 	"bytes"
-	"github.com/golang/protobuf/proto"
 	"github.com/stretchr/testify/assert"
 	"net"
 	"testing"
@@ -27,11 +26,11 @@ func TestMultiMessageSender_SendMessage(t *testing.T) {
 		if assert.Nil(t, err, "toWire returned an error for package %v: %v", p, err) {
 			channels := testPackageChannels[i]
 
-			connNoChan := newBufferConn()
-			connNotInDict := newBufferConn()
-			connAudio := newBufferConn()
-			connMeta := newBufferConn()
-			connBoth := newBufferConn()
+			connNoChan := newNamedBufferConn("without channels")
+			connNotInDict := newNamedBufferConn("not in the channels dictionary")
+			connAudio := newNamedBufferConn("with AUDIO channel")
+			connMeta := newNamedBufferConn("with META channel")
+			connBoth := newNamedBufferConn("with both channels")
 
 			mms := &multiMessageSender{
 				connections: []net.Conn{connNoChan, connNotInDict, connAudio, connMeta, connBoth},
@@ -44,20 +43,12 @@ func TestMultiMessageSender_SendMessage(t *testing.T) {
 
 			hasAudio, hasMeta := hasChannels(channels)
 
-			assertSendData(t, connNoChan, expectedBytes, len(channels) == 0, "without channels", p)
-			assertSendData(t, connNotInDict, expectedBytes, len(channels) == 0, "not in the channels dictionary", p)
-			assertSendData(t, connAudio, expectedBytes, hasAudio, "with AUDIO channel", p)
-			assertSendData(t, connMeta, expectedBytes, hasMeta, "with META channel", p)
-			assertSendData(t, connBoth, expectedBytes, true, "with both channels", p)
+			connNoChan.assertData(t, expectedBytes, len(channels) == 0, p)
+			connNotInDict.assertData(t, expectedBytes, len(channels) == 0, p)
+			connAudio.assertData(t, expectedBytes, hasAudio, p)
+			connMeta.assertData(t, expectedBytes, hasMeta, p)
+			connBoth.assertData(t, expectedBytes, true, p)
 		}
-	}
-}
-
-func assertSendData(t *testing.T, conn bufferConn, data []byte, shouldSend bool, name string, p proto.Message) {
-	if shouldSend {
-		assert.True(t, bytes.Equal(data, conn.Bytes()), "multiMessageSender sendMessage did not write toWire to the connection %s for package %v", name, p)
-	} else {
-		assert.Zero(t, len(conn.Bytes()), "multiMessageSender sendMessage did write to the connection %s for package %v", name, p)
 	}
 }
 

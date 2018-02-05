@@ -3,7 +3,9 @@ package comm
 import (
 	"bytes"
 	"github.com/golang/protobuf/proto"
+	"github.com/stretchr/testify/assert"
 	"net"
+	"testing"
 	"time"
 )
 
@@ -33,6 +35,7 @@ var testPackageChannels = [][]Channel{{Channel_AUDIO}, {Channel_META}, {}, {Chan
 
 type bufferConn struct {
 	*bytes.Buffer
+	name string
 }
 
 func (bufferConn) LocalAddr() net.Addr                { return nil }
@@ -42,8 +45,20 @@ func (bufferConn) SetReadDeadline(t time.Time) error  { return nil }
 func (bufferConn) SetWriteDeadline(t time.Time) error { return nil }
 func (bufferConn) Close() error                       { return nil }
 
+func (b bufferConn) assertData(t *testing.T, expected []byte, shouldSend bool, p proto.Message) {
+	if shouldSend {
+		assert.True(t, bytes.Equal(expected, b.Bytes()), "multiMessageSender sendMessage did not write toWire to the connection %s for package %v", b.name, p)
+	} else {
+		assert.Zero(t, len(b.Bytes()), "multiMessageSender sendMessage did write to the connection %s for package %v", b.name, p)
+	}
+}
+
 func newBufferConn() bufferConn {
 	return bufferConn{Buffer: bytes.NewBuffer([]byte{})}
+}
+
+func newNamedBufferConn(name string) bufferConn {
+	return bufferConn{Buffer: bytes.NewBuffer([]byte{}), name: name}
 }
 
 func newBufferConnWithData(data []byte) bufferConn {
