@@ -46,10 +46,8 @@ func TestMultiMessageSender_SendMessage(t *testing.T) {
 
 			assertSendData(t, connNoChan, expectedBytes, len(channels) == 0, "without channels", p)
 			assertSendData(t, connNotInDict, expectedBytes, len(channels) == 0, "not in the channels dictionary", p)
-
 			assertSendData(t, connAudio, expectedBytes, hasAudio, "with AUDIO channel", p)
 			assertSendData(t, connMeta, expectedBytes, hasMeta, "with META channel", p)
-
 			assertSendData(t, connBoth, expectedBytes, true, "with both channels", p)
 		}
 	}

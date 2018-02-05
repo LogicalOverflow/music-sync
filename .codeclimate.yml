@@ -20,4 +20,4 @@ checks:
 
   method-lines:
     config:
-      threshold: 25
+      threshold: 30

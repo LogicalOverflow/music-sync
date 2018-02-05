@@ -35,10 +35,8 @@ func (mms *multiMessageSender) SendMessage(m proto.Message) error {
 	for _, c := range mms.connections {
 		go func(c net.Conn) {
 			defer wg.Done()
-			if !hasCh || mms.isSubscribed(c, chs) {
-				if err := sendWire(m, c); err != nil {
-					errCol.Add(err)
-				}
+			if err := mms.sendMessageTo(m, c, hasCh, chs); err != nil {
+				errCol.Add(err)
 			}
 		}(c)
 	}
@@ -47,6 +45,13 @@ func (mms *multiMessageSender) SendMessage(m proto.Message) error {
 	errCol.Wait()
 
 	return errCol.Err("failed to send to %d clients: ")
+}
+
+func (mms *multiMessageSender) sendMessageTo(m proto.Message, c net.Conn, hasCh bool, chs []Channel) error {
+	if !hasCh || mms.isSubscribed(c, chs) {
+		return sendWire(m, c)
+	}
+	return nil
 }
 
 func (mms *multiMessageSender) AddConn(c net.Conn) {

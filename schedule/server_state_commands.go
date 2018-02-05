@@ -39,41 +39,43 @@ func parseIntParam(args []string, index int) (int, bool) {
 	return v, true
 }
 
+func (ss *serverState) queueCommandExec(args []string) (string, bool) {
+	if len(args) != 2 && len(args) != 1 {
+		return "", false
+	}
+	songPattern, ok := parseStringParam(args, 0)
+	if !ok {
+		return "", false
+	}
+
+	songs, err := util.ListGlobFiles(playback.AudioDir, songPattern)
+	if err != nil {
+		return fmt.Sprintf("glob pattern is invalid: %v", err), true
+	}
+	songs = util.FilterSongs(songs)
+	if len(songs) == 0 {
+		return fmt.Sprintf("no song matches the glob pattern %s", songPattern), true
+	}
+
+	var insert func(string, int)
+	if pos, ok := parseIntParam(args, 1); ok {
+		insert = func(s string, i int) { ss.playlist.InsertSong(s, pos+i) }
+	} else {
+		insert = func(s string, _ int) { ss.playlist.AddSong(s) }
+	}
+
+	for i, s := range songs {
+		insert(s, i)
+	}
+	return fmt.Sprintf("%d song(s) added to playlist: %s", len(songs), strings.Join(songs, ", ")), true
+}
+
 func (ss *serverState) queueCommand() ssh.Command {
 	return ssh.Command{
 		Name:  "queue",
 		Usage: "filename [position in playlist]",
 		Info:  "adds a song to the playlist",
-		Exec: func(args []string) (string, bool) {
-			if len(args) != 2 && len(args) != 1 {
-				return "", false
-			}
-			songPattern, ok := parseStringParam(args, 0)
-			if !ok {
-				return "", false
-			}
-
-			songs, err := util.ListGlobFiles(playback.AudioDir, songPattern)
-			if err != nil {
-				return fmt.Sprintf("glob pattern is invalid: %v", err), true
-			}
-			songs = util.FilterSongs(songs)
-			if len(songs) == 0 {
-				return fmt.Sprintf("no song matches the glob pattern %s", songPattern), true
-			}
-
-			var insert func(string, int)
-			if pos, ok := parseIntParam(args, 1); ok {
-				insert = func(s string, i int) { ss.playlist.InsertSong(s, pos+i) }
-			} else {
-				insert = func(s string, _ int) { ss.playlist.AddSong(s) }
-			}
-
-			for i, s := range songs {
-				insert(s, i)
-			}
-			return fmt.Sprintf("%d song(s) added to playlist: %s", len(songs), strings.Join(songs, ", ")), true
-		},
+		Exec:  ss.queueCommandExec,
 		Options: func(prefix string, arg int) []string {
 			if arg != 0 {
 				return []string{}
@@ -90,36 +92,38 @@ func (ss *serverState) queueCommand() ssh.Command {
 	}
 }
 
+func (ss *serverState) playlistCommandExc([]string) (string, bool) {
+	songs := ss.playlist.Songs()
+	entries := make([]string, len(songs))
+	format := fmt.Sprintf("  [%%0%dd] %%s", len(strconv.Itoa(len(songs)-1)))
+	for i, s := range songs {
+		entries[i] = fmt.Sprintf(format, i, s)
+	}
+	var playingStatus string
+	if ss.playlist.Playing() {
+		playingStatus = "Playing"
+	} else {
+		playingStatus = "Paused"
+	}
+
+	songList := "Empty"
+	if 0 < len(entries) {
+		songList = "\n" + strings.Join(entries, "\n")
+	}
+	currSong := ss.playlist.CurrentSong()
+	if currSong == "" {
+		currSong = "None"
+	}
+
+	return fmt.Sprintf("Current Playlist (%s): %s\nCurrent Song: %s", playingStatus, songList, currSong), true
+}
+
 func (ss *serverState) playlistCommand() ssh.Command {
 	return ssh.Command{
 		Name:  "playlist",
 		Usage: "",
 		Info:  "prints the current playlist",
-		Exec: func([]string) (string, bool) {
-			songs := ss.playlist.Songs()
-			entries := make([]string, len(songs))
-			format := fmt.Sprintf("  [%%0%dd] %%s", len(strconv.Itoa(len(songs)-1)))
-			for i, s := range songs {
-				entries[i] = fmt.Sprintf(format, i, s)
-			}
-			var playingStatus string
-			if ss.playlist.Playing() {
-				playingStatus = "Playing"
-			} else {
-				playingStatus = "Paused"
-			}
-
-			songList := "Empty"
-			if 0 < len(entries) {
-				songList = "\n" + strings.Join(entries, "\n")
-			}
-			currSong := ss.playlist.CurrentSong()
-			if currSong == "" {
-				currSong = "None"
-			}
-
-			return fmt.Sprintf("Current Playlist (%s): %s\nCurrent Song: %s", playingStatus, songList, currSong), true
-		},
+		Exec:  ss.playlistCommandExc,
 	}
 }
 
