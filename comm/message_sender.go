@@ -86,11 +86,18 @@ func (mms *multiMessageSender) Subscribe(c net.Conn, channel Channel) {
 func (mms *multiMessageSender) isSubscribed(c net.Conn, channels []Channel) bool {
 	if l, ok := mms.channels[c]; ok {
 		for _, ch := range l {
-			for _, c := range channels {
-				if ch == c {
-					return true
-				}
+			if containsChannel(channels, ch) {
+				return true
 			}
+		}
+	}
+	return false
+}
+
+func containsChannel(channels []Channel, ch Channel) bool {
+	for _, c := range channels {
+		if ch == c {
+			return true
 		}
 	}
 	return false

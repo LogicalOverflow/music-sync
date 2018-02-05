@@ -93,6 +93,18 @@ func Init(sampleRate int) error {
 	}
 	player.SetUnderrunCallback(func() { logger.Warn("player is underrunning") })
 
+	initStreamer(sampleRate)
+
+	go playLoop()
+
+	go streamer.ReadChunks()
+
+	logger.Infof("playback initialized")
+
+	return nil
+}
+
+func initStreamer(sampleRate int) {
 	streamer = &timedMultiStreamer{
 		format:         format,
 		streamers:      make([]*queuedStream, 0),
@@ -104,14 +116,6 @@ func Init(sampleRate int) error {
 		samples:        newTimedSampleQueue(2 * sampleRate),
 		syncing:        true,
 	}
-
-	go playLoop()
-
-	go streamer.ReadChunks()
-
-	logger.Infof("playback initialized")
-
-	return nil
 }
 
 // SetVolume sets the playback volume of the player
