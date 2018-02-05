@@ -77,11 +77,10 @@ func (s *session) createReadlineConfig() {
 	}
 }
 
-func (s *session) handleLine(line string) {
+func (s *session) handleLine(line string) bool {
 	cmd := parser.ParseCommand(line)
 
-	c := commandByName(cmd.Command)
-	if c != nil {
+	if c := commandByName(cmd.Command); c != nil {
 		s.execCommand(*c, cmd.Parameters)
 	} else {
 		switch cmd.Command {
@@ -89,11 +88,12 @@ func (s *session) handleLine(line string) {
 			fmt.Fprint(s.ex, "\033[H")
 		case "exit":
 			logger.Infof("connection %s as %s closed", s.RemoteAddr(), s.User())
-			return
+			return false
 		default:
 			fmt.Fprintf(s.ex, "Unknown command '%s'. Type 'help' for help.\n", cmd.Command)
 		}
 	}
+	return true
 }
 
 func (s *session) execCommand(c Command, args []string) {
@@ -120,7 +120,9 @@ func (s *session) readLoop() {
 			return
 		}
 
-		s.handleLine(line)
+		if !s.handleLine(line) {
+			return
+		}
 	}
 }
 
