@@ -25,7 +25,7 @@ func parseStringParam(args []string, index int) (string, bool) {
 	if len(args) <= index {
 		return "", false
 	}
-	return args[index], false
+	return args[index], true
 }
 
 func parseIntParam(args []string, index int) (int, bool) {
@@ -40,9 +40,6 @@ func parseIntParam(args []string, index int) (int, bool) {
 }
 
 func (ss *serverState) queueCommandExec(args []string) (string, bool) {
-	if len(args) != 2 && len(args) != 1 {
-		return "", false
-	}
 	songPattern, ok := parseStringParam(args, 0)
 	if !ok {
 		return "", false

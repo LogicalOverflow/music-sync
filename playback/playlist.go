@@ -68,49 +68,32 @@ func (pl *Playlist) nextSong() (song string) {
 
 func (pl *Playlist) pushStreamer(s beep.StreamSeekCloser) {
 	buf := make([][2]float64, 512)
-	first := true
+	go pl.newSongHandler(pl.sampleIndexWrite, pl.currentSong, int64(s.Len()))
 	for {
 		n, ok := len(buf), true
 		pl.callPauseToggleHandler()
 		if pl.playing {
-			if first {
-				go pl.newSongHandler(pl.sampleIndexWrite, pl.currentSong, int64(s.Len()))
-				first = false
-			}
-
-			n, ok = pl.copyStreamer(s, buf)
+			n, ok = s.Stream(buf)
+			pl.pushBuffer(buf[:n])
 		} else {
 			pl.pushNanSamples(len(buf))
 		}
 
-		if pl.shouldBreakStreamerLoop(n, ok, len(buf)) {
+		if 0 < len(pl.forceNext) && <-pl.forceNext {
+			break
+		}
+
+		if !ok || n < len(buf) {
+			pl.position++
 			break
 		}
 	}
-}
-
-func (pl *Playlist) copyStreamer(s beep.Streamer, buf [][2]float64) (n int, ok bool) {
-	n, ok = s.Stream(buf)
-	pl.pushBuffer(buf[:n])
-	return
 }
 
 func (pl *Playlist) pushNanSamples(count int) {
 	for i := 0; i < count; i++ {
 		pl.pushSample(math.NaN(), math.NaN())
 	}
-}
-
-func (pl *Playlist) shouldBreakStreamerLoop(n int, ok bool, bufSize int) bool {
-	if 0 < len(pl.forceNext) && <-pl.forceNext {
-		return true
-	}
-
-	if !ok || n < bufSize {
-		pl.position++
-		return true
-	}
-	return false
 }
 
 func (pl *Playlist) pushBuffer(buffer [][2]float64) {
