@@ -51,7 +51,7 @@ func (pl *Playlist) StreamLoop() {
 		}
 
 		pl.pushStreamer(s)
-		pl.pusNanBreak()
+		pl.pushNanBreak()
 	}
 }
 
@@ -68,7 +68,10 @@ func (pl *Playlist) nextSong() (song string) {
 
 func (pl *Playlist) pushStreamer(s beep.StreamSeekCloser) {
 	buf := make([][2]float64, 512)
-	go pl.newSongHandler(pl.sampleIndexWrite, pl.currentSong, int64(s.Len()))
+	if pl.newSongHandler != nil {
+		go pl.newSongHandler(pl.sampleIndexWrite, pl.currentSong, int64(s.Len()))
+	}
+
 	for {
 		n, ok := len(buf), true
 		pl.callPauseToggleHandler()
@@ -109,7 +112,7 @@ func (pl *Playlist) pushBuffer(buffer [][2]float64) {
 	}
 }
 
-func (pl *Playlist) pusNanBreak() {
+func (pl *Playlist) pushNanBreak() {
 	for i := 0; i < pl.nanBreakSize; i++ {
 		pl.pushSample(math.NaN(), math.NaN())
 	}
@@ -122,7 +125,7 @@ func (pl *Playlist) pushSample(low, high float64) {
 }
 
 func (pl *Playlist) callPauseToggleHandler() {
-	if pl.playing != pl.playingLast {
+	if pl.playing != pl.playingLast && pl.pauseToggleHandler != nil {
 		pl.playingLast = pl.playing
 		go pl.pauseToggleHandler(pl.playing, pl.sampleIndexWrite)
 	}

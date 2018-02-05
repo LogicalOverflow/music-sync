@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"math"
+	"sync"
 	"testing"
 )
 
@@ -151,4 +153,179 @@ func TestPlaylist_Fill(t *testing.T) {
 		assert.Equal(t, in[i][0], low[i], "playlist fill inserted the wrong low sample at index %d", i)
 		assert.Equal(t, in[i][1], high[i], "playlist fill inserted the wrong high sample at index %d", i)
 	}
+}
+
+type testStreamer struct {
+	samples  chan [2]float64
+	position int
+	length   int
+}
+
+func (ts *testStreamer) Err() error       { return nil }
+func (ts *testStreamer) Len() int         { return ts.length }
+func (ts *testStreamer) Position() int    { return ts.position }
+func (ts *testStreamer) Seek(p int) error { ts.position = p; return nil }
+func (ts *testStreamer) Close() error     { close(ts.samples); return nil }
+
+func (ts *testStreamer) Stream(samples [][2]float64) (n int, ok bool) {
+	n = 0
+	ok = true
+	for s := range ts.samples {
+		samples[n] = s
+		n++
+		if len(samples) <= n {
+			break
+		}
+	}
+	ts.position += n
+	return
+}
+
+func TestPlaylist_pushStreamer(t *testing.T) {
+	pl := NewPlaylist(16, []string{}, 0)
+	pl.currentSong = "the-song"
+	pl.sampleIndexWrite = 16
+
+	var startSampleIndex uint64
+	var filename string
+	var songLength int64
+
+	pl.SetNewSongHandler(func(ssi uint64, fn string, sl int64) {
+		startSampleIndex = ssi
+		filename = fn
+		songLength = sl
+	})
+
+	s := &testStreamer{samples: make(chan [2]float64, 512), position: 0, length: 1024}
+
+	pl.SetPlaying(true)
+	go pl.pushStreamer(s)
+
+	comm := make(chan bool)
+
+	go func() {
+		for i := 0; i < 512; i++ {
+			s.samples <- [2]float64{-float64(i), float64(i)}
+		}
+		<-comm
+		pl.SetPlaying(false)
+		<-comm
+		pl.SetPlaying(true)
+		for i := 512; i < 1024; i++ {
+			s.samples <- [2]float64{-float64(i), float64(i)}
+		}
+		s.Close()
+	}()
+
+	assert.Equal(t, -float64(0), <-pl.low, "0-th low sample is incorrect when using pushStreamer")
+	assert.Equal(t, float64(0), <-pl.high, "0-th high sample is incorrect when using pushStreamer")
+	comm <- true
+	for i := 1; i < 512; i++ {
+		assert.Equal(t, -float64(i), <-pl.low, "%d-th low sample is incorrect when using pushStreamer", i)
+		assert.Equal(t, float64(i), <-pl.high, "%d-th high sample is incorrect when using pushStreamer", i)
+	}
+
+	assert.True(t, math.IsNaN(<-pl.low), "0-th low pause sample is not none when using pushStreamer")
+	assert.True(t, math.IsNaN(<-pl.high), "0-th high pause sample is not nan when using pushStreamer")
+	comm <- true
+	for i := 1; i < 512; i++ {
+		assert.True(t, math.IsNaN(<-pl.low), "%d-th low pause sample is not none when using pushStreamer", i)
+		assert.True(t, math.IsNaN(<-pl.high), "%d-th high pause sample is not nan when using pushStreamer", i)
+	}
+	for i := 512; i < 1024; i++ {
+		assert.Equal(t, -float64(i), <-pl.low, "%d-th low sample is incorrect when using pushStreamer", i)
+		assert.Equal(t, float64(i), <-pl.high, "%d-th high sample is incorrect when using pushStreamer", i)
+	}
+
+	assert.Equal(t, uint64(16), startSampleIndex, "NewSongHandler called with wrong startSampleIndex")
+	assert.Equal(t, "the-song", filename, "NewSongHandler called with wrong filename")
+	assert.Equal(t, int64(1024), songLength, "NewSongHandler called with wrong songLength")
+}
+
+func TestPlaylist_shouldBreakStreamerPushLoop(t *testing.T) {
+	pl := NewPlaylist(16, []string{}, 0)
+	assert.True(t, pl.shouldBreakStreamerPushLoop(16, false, 16), "playlist shouldBreakStreamerPushLoop returned false when ok is false")
+	assert.True(t, pl.shouldBreakStreamerPushLoop(15, true, 16), "playlist shouldBreakStreamerPushLoop returned false when n < bufSize")
+	assert.False(t, pl.shouldBreakStreamerPushLoop(16, true, 16), "playlist shouldBreakStreamerPushLoop returned true when n = bufSize and ok true")
+}
+
+func TestPlaylist_pushSample(t *testing.T) {
+	pl := NewPlaylist(16, []string{}, 0)
+	go func() {
+		for i := 0; i < 32; i++ {
+			pl.pushSample(-float64(i), float64(i))
+		}
+	}()
+	for i := 0; i < 32; i++ {
+		assert.Equal(t, -float64(i), <-pl.low, "%d-th low sample is wrong when pushing with pushSample", i)
+		assert.Equal(t, float64(i), <-pl.high, "%d-th high sample is wrong when pushing with pushSample", i)
+	}
+}
+
+func TestPlaylist_pushNanSamples(t *testing.T) {
+	pl := NewPlaylist(16, []string{}, 0)
+	go pl.pushNanSamples(32)
+	for i := 0; i < 32; i++ {
+		assert.True(t, math.IsNaN(<-pl.low), "%d-th low sample is not nan when pushNanSamples", i)
+		assert.True(t, math.IsNaN(<-pl.high), "%d-th high sample is not nan when pushNanSamples", i)
+	}
+}
+
+func TestPlaylist_pushBuffer(t *testing.T) {
+	pl := NewPlaylist(16, []string{}, 0)
+	buffer := make([][2]float64, 32)
+	for i := range buffer {
+		buffer[i] = [2]float64{-float64(i), float64(i)}
+	}
+	go pl.pushBuffer(buffer)
+
+	for i := range buffer {
+		assert.Equal(t, buffer[i][0], <-pl.low, "%d-th low sample is wrong when pushing with pushBuffer", i)
+		assert.Equal(t, buffer[i][1], <-pl.high, "%d-th high sample is wrong when pushing with pushBuffer", i)
+	}
+}
+
+func TestPlaylist_pushNanBreak(t *testing.T) {
+	pl := NewPlaylist(16, []string{}, 32)
+	go pl.pushNanBreak()
+	for i := 0; i < 32; i++ {
+		assert.True(t, math.IsNaN(<-pl.low), "%d-th low sample is not nan when pushNanBreak", i)
+		assert.True(t, math.IsNaN(<-pl.high), "%d-th high sample is not nan when pushNanBreak", i)
+	}
+}
+
+func TestPlaylist_callPauseToggleHandler(t *testing.T) {
+	pl := NewPlaylist(16, []string{}, 0)
+	var playing bool
+	var sample uint64
+	var wg sync.WaitGroup
+	pl.SetPauseToggleHandler(func(p bool, s uint64) {
+		wg.Done()
+		playing = p
+		sample = s
+	})
+
+	for i := 0; i < 4; i++ {
+		sample = uint64(0xffffffffffffffff)
+		pl.sampleIndexWrite = uint64(i)
+		plPlayingLast := i&1 == 1
+		plPlaying := i&2 == 2
+
+		pl.playingLast = plPlayingLast
+		pl.playing = plPlaying
+		if plPlaying != plPlayingLast {
+			wg.Add(1)
+		}
+
+		pl.callPauseToggleHandler()
+		if plPlaying == plPlayingLast {
+			assert.Equal(t, uint64(0xffffffffffffffff), sample, "PauseToggleHandler called with playing %v and playingLast %v", plPlaying, plPlayingLast)
+		} else {
+			wg.Wait()
+			assert.Equal(t, uint64(i), sample, "PauseToggleHandler not called with correct sample for playing %v and playingLast %v", plPlaying, plPlayingLast)
+			assert.Equal(t, plPlaying, playing, "PauseToggleHandler not called with correct playing for playing %v and playingLast %v", plPlaying, plPlayingLast)
+		}
+	}
+	pl.playingLast = true
+	pl.playing = true
 }
