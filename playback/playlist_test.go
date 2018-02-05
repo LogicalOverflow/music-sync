@@ -16,9 +16,9 @@ func songName(index int) string {
 func TestPlaylist_SetPos(t *testing.T) {
 	pl := NewPlaylist(16, []string{}, 0)
 	for i := 0; i < 16; i++ {
-		go func() { <-pl.forceNext }()
 		pl.SetPos(i)
 		assert.Equal(t, i, pl.position, "playlist SetPos did not set position correctly")
+		assert.True(t, <-pl.forceNext, "playlist SetPos did not set forceNext correctly")
 	}
 }
 
@@ -247,6 +247,8 @@ func TestPlaylist_shouldBreakStreamerPushLoop(t *testing.T) {
 	assert.True(t, pl.shouldBreakStreamerPushLoop(16, false, 16), "playlist shouldBreakStreamerPushLoop returned false when ok is false")
 	assert.True(t, pl.shouldBreakStreamerPushLoop(15, true, 16), "playlist shouldBreakStreamerPushLoop returned false when n < bufSize")
 	assert.False(t, pl.shouldBreakStreamerPushLoop(16, true, 16), "playlist shouldBreakStreamerPushLoop returned true when n = bufSize and ok true")
+	pl.forceNext <- true
+	assert.True(t, pl.shouldBreakStreamerPushLoop(16, true, 16), "playlist shouldBreakStreamerPushLoop returned false when forceNext")
 }
 
 func TestPlaylist_pushSample(t *testing.T) {
