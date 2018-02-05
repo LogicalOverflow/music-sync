@@ -19,50 +19,54 @@ func FilterSongs(files []string) []string {
 	return result
 }
 
-// ListAllFiles recursively lists all songs (files) in songsDir/subDir
+func walker(root string, pathTransform func(string) string, pathFilter func(string, os.FileInfo) bool) []string {
+	walked := make([]string, 0)
+	filepath.Walk(root, func(path string, f os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		path = pathTransform(path)
+		if pathFilter(path, f) {
+			walked = append(walked, path)
+		}
+		return nil
+	})
+	return walked
+}
+
+// ListAllFiles recursively lists all files in songsDir/subDir
 func ListAllFiles(songsDir string, subDir string) []string {
-	songs := make([]string, 0)
 	dir := songsDir
 	if subDir != "" {
 		dir = filepath.Join(songsDir, subDir)
 	}
-	filepath.Walk(dir, func(path string, f os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
+
+	return walker(dir, func(path string) string {
 		if strings.HasPrefix(path, songsDir) {
 			path = path[len(songsDir):]
 		}
 		if strings.HasPrefix(path, "/") || strings.HasPrefix(path, "\\") {
 			path = path[1:]
 		}
-		if path != "" && !f.IsDir() {
-			songs = append(songs, path)
-		}
-		return nil
+		return path
+	}, func(path string, f os.FileInfo) bool {
+		return path != "" && !f.IsDir()
 	})
-	return songs
 }
 
 // ListAllSubDirs recursively lists all directories in dir
 func ListAllSubDirs(dir string) []string {
-	dirs := make([]string, 0)
-	filepath.Walk(dir, func(path string, f os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
+	return walker(dir, func(path string) string {
 		if strings.HasPrefix(path, dir) {
 			path = path[len(dir):]
 		}
 		if strings.HasPrefix(path, "/") || strings.HasPrefix(path, "\\") {
 			path = path[1:]
 		}
-		if path != "" && f.IsDir() {
-			dirs = append(dirs, path)
-		}
-		return nil
+		return path
+	}, func(path string, f os.FileInfo) bool {
+		return path != "" && f.IsDir()
 	})
-	return dirs
 }
 
 // ListGlobFiles lists all files in a directory matching the provided glob pattern

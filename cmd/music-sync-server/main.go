@@ -44,17 +44,8 @@ func main() {
 	}
 }
 
-func run(ctx *cli.Context) error {
-	cmd.HandleLoggingFlags(ctx)
+func setScheduleVars(ctx *cli.Context) {
 	var (
-		listenAddress = ctx.String(cmd.FlagKey(cmd.ListenAddressFlag))
-		listenPort    = ctx.Int(cmd.FlagKey(cmd.ListenPortFlag))
-		musicDir      = ctx.String(cmd.FlagKey(cmd.MusicDirFlag))
-		sshAddress    = ctx.String(cmd.FlagKey(cmd.SSHAddressFlag))
-		sshPort       = ctx.Int(cmd.FlagKey(cmd.SSHPortFlag))
-		sshUsers      = ctx.String(cmd.FlagKey(cmd.SSHUsersFlag))
-		sshKeyFile    = ctx.String(cmd.FlagKey(cmd.SSHKeyFileFlag))
-
 		timeSyncInterval   = ctx.Duration(cmd.FlagKey(cmd.TimeSyncIntervalFlag))
 		timeSyncCycles     = ctx.Int(cmd.FlagKey(cmd.TimeSyncCyclesFlag))
 		timeSyncCycleDelay = ctx.Duration(cmd.FlagKey(cmd.TimeSyncCycleDelayFlag))
@@ -65,14 +56,6 @@ func run(ctx *cli.Context) error {
 		sampleRate         = ctx.Int(cmd.FlagKey(cmd.SampleRateFlag))
 	)
 
-	listen := fmt.Sprintf("%s:%d", listenAddress, listenPort)
-	sshListen := fmt.Sprintf("%s:%d", sshAddress, sshPort)
-
-	if err := util.CheckDir(musicDir); err != nil {
-		return cli.NewExitError(fmt.Sprintf("invalid music dir: %v", err), 1)
-	}
-	playback.AudioDir = musicDir
-
 	schedule.TimeSyncInterval = timeSyncInterval
 	schedule.TimeSyncCycles = timeSyncCycles
 	schedule.TimeSyncCycleDelay = timeSyncCycleDelay
@@ -82,6 +65,30 @@ func run(ctx *cli.Context) error {
 	schedule.StreamStartDelay = streamStartDelay
 	schedule.StreamDelay = streamDelay
 	schedule.SampleRate = sampleRate
+
+}
+
+func run(ctx *cli.Context) error {
+	cmd.HandleLoggingFlags(ctx)
+	var (
+		listenAddress = ctx.String(cmd.FlagKey(cmd.ListenAddressFlag))
+		listenPort    = ctx.Int(cmd.FlagKey(cmd.ListenPortFlag))
+		musicDir      = ctx.String(cmd.FlagKey(cmd.MusicDirFlag))
+		sshAddress    = ctx.String(cmd.FlagKey(cmd.SSHAddressFlag))
+		sshPort       = ctx.Int(cmd.FlagKey(cmd.SSHPortFlag))
+		sshUsers      = ctx.String(cmd.FlagKey(cmd.SSHUsersFlag))
+		sshKeyFile    = ctx.String(cmd.FlagKey(cmd.SSHKeyFileFlag))
+	)
+
+	listen := fmt.Sprintf("%s:%d", listenAddress, listenPort)
+	sshListen := fmt.Sprintf("%s:%d", sshAddress, sshPort)
+
+	if err := util.CheckDir(musicDir); err != nil {
+		return cli.NewExitError(fmt.Sprintf("invalid music dir: %v", err), 1)
+	}
+
+	playback.AudioDir = musicDir
+	setScheduleVars(ctx)
 
 	sender, err := comm.StartServer(listen)
 	if err != nil {
