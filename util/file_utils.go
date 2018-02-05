@@ -34,6 +34,16 @@ func walker(root string, pathTransform func(string) string, pathFilter func(stri
 	return walked
 }
 
+func removeDirPrefix(path string, prefix string) string {
+	if strings.HasPrefix(path, prefix) {
+		path = path[len(prefix):]
+	}
+	if strings.HasPrefix(path, "/") || strings.HasPrefix(path, "\\") {
+		path = path[1:]
+	}
+	return path
+}
+
 // ListAllFiles recursively lists all files in songsDir/subDir
 func ListAllFiles(songsDir string, subDir string) []string {
 	dir := songsDir
@@ -42,13 +52,7 @@ func ListAllFiles(songsDir string, subDir string) []string {
 	}
 
 	return walker(dir, func(path string) string {
-		if strings.HasPrefix(path, songsDir) {
-			path = path[len(songsDir):]
-		}
-		if strings.HasPrefix(path, "/") || strings.HasPrefix(path, "\\") {
-			path = path[1:]
-		}
-		return path
+		return removeDirPrefix(path, songsDir)
 	}, func(path string, f os.FileInfo) bool {
 		return path != "" && !f.IsDir()
 	})
@@ -57,13 +61,7 @@ func ListAllFiles(songsDir string, subDir string) []string {
 // ListAllSubDirs recursively lists all directories in dir
 func ListAllSubDirs(dir string) []string {
 	return walker(dir, func(path string) string {
-		if strings.HasPrefix(path, dir) {
-			path = path[len(dir):]
-		}
-		if strings.HasPrefix(path, "/") || strings.HasPrefix(path, "\\") {
-			path = path[1:]
-		}
-		return path
+		return removeDirPrefix(path, dir)
 	}, func(path string, f os.FileInfo) bool {
 		return path != "" && f.IsDir()
 	})
@@ -84,13 +82,7 @@ func ListGlobFiles(dir, pattern string) ([]string, error) {
 		if !IsFile(m) {
 			continue
 		}
-		if strings.HasPrefix(m, dir) {
-			m = m[len(dir):]
-		}
-		if strings.HasPrefix(m, "/") || strings.HasPrefix(m, "\\") {
-			m = m[1:]
-		}
-		result = append(result, m)
+		result = append(result, removeDirPrefix(m, dir))
 	}
 	return result, nil
 }

@@ -39,26 +39,29 @@ func StartServer(address string) (MessageSender, error) {
 		return nil, fmt.Errorf("failed to start server at %s: %v", address, err)
 	}
 	logger.Infof("server running at %s", address)
+
 	mms := &multiMessageSender{connections: make([]net.Conn, 0), channels: make(map[net.Conn][]Channel)}
-	go func() {
-		h := newServerPackageHandler(mms)
-		for {
-			conn, err := l.Accept()
-			if err != nil {
-				logger.Warnf("failed to accept connection: %v", err)
-			}
-			go func(conn net.Conn) {
-				mms.AddConn(conn)
-				handleConnection(conn, h)
-				mms.DelConn(conn)
-			}(conn)
-			if NewClientHandler != nil {
-				go NewClientHandler(-1, &singleMessageSender{conn})
-			}
-		}
-	}()
+	go serverConnectionAcceptor(mms, l)
 
 	return mms, nil
+}
+
+func serverConnectionAcceptor(mms *multiMessageSender, l net.Listener) {
+	h := newServerPackageHandler(mms)
+	for {
+		conn, err := l.Accept()
+		if err != nil {
+			logger.Warnf("failed to accept connection: %v", err)
+		}
+		go func(conn net.Conn) {
+			mms.AddConn(conn)
+			handleConnection(conn, h)
+			mms.DelConn(conn)
+		}(conn)
+		if NewClientHandler != nil {
+			go NewClientHandler(-1, &singleMessageSender{conn})
+		}
+	}
 }
 
 // ConnectToServer connects to the server at server and returns a MessageSender to communicate with the master
