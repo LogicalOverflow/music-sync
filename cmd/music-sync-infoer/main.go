@@ -7,6 +7,7 @@ import (
 	"github.com/LogicalOverflow/music-sync/comm"
 	"github.com/LogicalOverflow/music-sync/logging"
 	"github.com/LogicalOverflow/music-sync/schedule"
+	"github.com/LogicalOverflow/music-sync/timing"
 	"github.com/gdamore/tcell"
 	"github.com/urfave/cli"
 	"os"
@@ -110,7 +111,7 @@ func tcellLoop(screen tcell.Screen) {
 func redraw(d *drawer) {
 	d.Clear()
 
-	info := currentState.Info()
+	info := currentState.Info(timing.GetSyncedTime())
 	drawPlaybackInfo(d, info)
 	drawLyrics(d, info)
 

@@ -3,7 +3,6 @@ package main
 import (
 	"github.com/LogicalOverflow/music-sync/metadata"
 	"github.com/LogicalOverflow/music-sync/schedule"
-	"github.com/LogicalOverflow/music-sync/timing"
 	"sync"
 	"time"
 )
@@ -39,19 +38,14 @@ func (s songsByStartIndex) Len() int           { return len(s) }
 func (s songsByStartIndex) Less(i, j int) bool { return s[i].startIndex < s[j].startIndex }
 func (s songsByStartIndex) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
 
-func (s *state) Info() *playbackInformation {
-	now := timing.GetSyncedTime()
+func (s *state) Info(now int64) *playbackInformation {
 	sample := s.currentSample(now)
-
 	currentSong := s.currentSong(sample)
-
 	s.removeOldPauses(currentSong)
-
 	pausesInCurrentSong, playing := s.pausesInCurrentSong(sample, currentSong)
 
-	songLength := time.Duration(0)
-	timeInSong := time.Duration(0)
-	progressInSong := float64(0)
+	var songLength, timeInSong time.Duration
+	var progressInSong float64
 
 	if currentSong.startIndex != 0 && int64(currentSong.startIndex) < sample {
 		sampleInSong := sample - int64(currentSong.startIndex) - pausesInCurrentSong
