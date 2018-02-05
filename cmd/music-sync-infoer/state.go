@@ -144,7 +144,7 @@ func (s *state) currentSong(sample int64) (currentSong upcomingSong) {
 }
 
 func (s *state) currentSample(now int64) (sample int64) {
-	sample = -1
+	sample = 0
 	s.removeOldChunks(now)
 
 	s.ChunksMutex.Lock()
@@ -168,8 +168,8 @@ func (s *state) removeOldChunks(now int64) {
 	}
 
 	passed := 0
-	for ; s.Chunks[passed].endTime() < now; passed++ {
-		if len(s.Chunks) <= passed {
+	for ; passed < len(s.Chunks); passed++ {
+		if now <= s.Chunks[passed].endTime() {
 			break
 		}
 	}
@@ -220,6 +220,7 @@ type upcomingChunk struct {
 func (uc upcomingChunk) endTime() int64 {
 	return uc.startTime + uc.length()
 }
+
 func (uc upcomingChunk) length() int64 {
 	return int64(time.Duration(uc.size)*time.Second) / int64(schedule.SampleRate)
 }

@@ -15,3 +15,11 @@ func TestAddLoggingFlags(t *testing.T) {
 		assert.Equal(t, names[i], f[i].GetName(), "AddLoggingFlags has the wrong flag at index %d", i)
 	}
 }
+
+func TestFlagKey(t *testing.T) {
+	cases := [][2]string{{"long-name, alias", "long-name"}, {"without-alias", "without-alias"}}
+	for _, c := range cases {
+		actual := FlagKey(cli.StringFlag{Name: c[0]})
+		assert.Equal(t, c[1], actual, "wrong FlagKey for flag with name %s", c[0])
+	}
+}
