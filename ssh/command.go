@@ -39,6 +39,15 @@ func (command Command) usage() string {
 	return "Usage: " + command.Name + " " + command.Usage
 }
 
+func commandByName(name string) *Command {
+	for _, c := range commands {
+		if c.Name == name {
+			return &c
+		}
+	}
+	return nil
+}
+
 var helpCommand = Command{
 	Name:  "help",
 	Usage: "[command name]",

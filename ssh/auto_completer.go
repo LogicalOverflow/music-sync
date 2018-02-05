@@ -16,37 +16,57 @@ func (sac *sshAutoCompleter) Do(line []rune, pos int) (newLine [][]rune, length 
 	}
 
 	cmd := parser.ParseCommand(string(line))
+	if lastChar == ' ' {
+		cmd.Parameters = append(cmd.Parameters, "")
+	}
 
 	if len(cmd.Parameters) == 0 && lastChar != ' ' {
-		for _, c := range commands {
-			if strings.HasPrefix(c.Name, cmd.Command) {
-				newLine = append(newLine, []rune(c.Name + " ")[pos:])
-			}
-		}
-
-		for _, c := range []string{"clear", "exit"} {
-			if strings.HasPrefix(c, cmd.Command) {
-				newLine = append(newLine, []rune(c + " ")[pos:])
-			}
-		}
+		newLine = sac.commandsWithPrefix(cmd, pos, newLine)
 	} else {
-		for _, c := range commands {
-			if c.Name == cmd.Command {
-				if c.Options != nil {
-					if len(cmd.Parameters) == 0 {
-						cmd.Parameters = []string{""}
-					}
-					argNum := len(cmd.Parameters) - 1
-					arg := cmd.Parameters[argNum]
-					for _, o := range c.Options(arg, argNum) {
-						cmd.Parameters[argNum] = o
-						newLine = append(newLine, []rune(cmd.Unparse())[pos:])
-					}
-					cmd.Parameters[argNum] = arg
-				}
-			}
-		}
+		newLine = sac.commandArgOptionsWithPrefix(cmd, pos, newLine)
 	}
+
 	length = pos
 	return
+}
+
+func (sac *sshAutoCompleter) commandNames() []string {
+	cs := []string{"clear", "exit"}
+	for _, c := range commands {
+		cs = append(cs, c.Name)
+	}
+	return cs
+}
+
+func (sac *sshAutoCompleter) commandsWithPrefix(cmd parser.ParsedCommand, pos int, result [][]rune) [][]rune {
+	for _, c := range sac.commandNames() {
+		if strings.HasPrefix(c, cmd.Command) {
+			result = append(result, []rune((c + " ")[pos:]))
+		}
+	}
+	return result
+}
+
+func (sac *sshAutoCompleter) commandArgOptionsWithPrefix(cmd parser.ParsedCommand, pos int, result [][]rune) [][]rune {
+	c := commandByName(cmd.Command)
+	if c != nil && c.Options != nil {
+		argNum := len(cmd.Parameters) - 1
+		arg := cmd.Parameters[argNum]
+		for _, o := range sac.filterByPrefix(c.Options(arg, argNum), arg) {
+			cmd.Parameters[argNum] = o
+			result = append(result, []rune(cmd.Unparse())[pos:])
+		}
+		cmd.Parameters[argNum] = arg
+	}
+	return result
+}
+
+func (sac *sshAutoCompleter) filterByPrefix(l []string, prefix string) []string {
+	r := make([]string, 0, len(l))
+	for _, e := range l {
+		if strings.HasPrefix(e, prefix) {
+			r = append(r, e)
+		}
+	}
+	return r
 }
