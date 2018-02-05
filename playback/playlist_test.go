@@ -7,6 +7,10 @@ import (
 	"testing"
 )
 
+func songName(index int) string {
+	return fmt.Sprintf("song-%02d", index)
+}
+
 func TestPlaylist_SetPos(t *testing.T) {
 	pl := NewPlaylist(16, []string{}, 0)
 	for i := 0; i < 16; i++ {
@@ -21,12 +25,12 @@ func TestPlaylist_Songs(t *testing.T) {
 	for i := 0; i < 16; i++ {
 		pl.songs = make([]string, i+1)
 		for j := range pl.songs {
-			pl.songs[j] = fmt.Sprintf("song-%02d", i)
+			pl.songs[j] = songName(i)
 		}
 		songs := pl.Songs()
 		if assert.Equal(t, i+1, len(songs), "playlist Songs returned a slice of incorrect length when holding %d songs", i+1) {
 			for j := range songs {
-				assert.Equal(t, fmt.Sprintf("song-%02d", i), songs[j], "playlist Songs returned a slice with the wrong song at index %d when holding %d songs", j, i+1)
+				assert.Equal(t, songName(i), songs[j], "playlist Songs returned a slice with the wrong song at index %d when holding %d songs", j, i+1)
 			}
 		}
 	}
@@ -36,10 +40,10 @@ func TestPlaylist_AddSong(t *testing.T) {
 	pl := NewPlaylist(16, []string{}, 0)
 	require.Zero(t, len(pl.songs), "newly created playlist contains songs")
 	for i := 0; i < 16; i++ {
-		pl.AddSong(fmt.Sprintf("song-%02d", i))
+		pl.AddSong(songName(i))
 		if assert.Equal(t, i+1, len(pl.songs), "after adding %d songs, playlist does not hold the right amount of songs", i+1) {
 			for j := 0; j <= i; j++ {
-				assert.Equal(t, fmt.Sprintf("song-%02d", i), pl.songs[i], "after adding %d songs, the song with index %d is incorrect", i+1, j)
+				assert.Equal(t, songName(i), pl.songs[i], "after adding %d songs, the song with index %d is incorrect", i+1, j)
 			}
 		}
 	}
@@ -49,45 +53,39 @@ func TestPlaylist_InsertSong(t *testing.T) {
 	pl := NewPlaylist(16, []string{}, 0)
 	pl.songs = make([]string, 8)
 	for i := range pl.songs {
-		pl.songs[i] = fmt.Sprintf("song-%02d", 2*i)
+		pl.songs[i] = songName(2 * i)
 	}
+
 	for i := 1; i < 16; i += 2 {
-		pl.InsertSong(fmt.Sprintf("song-%02d", i), i)
+		pl.InsertSong(songName(i), i)
 		if assert.Equal(t, i/2+9, len(pl.songs), "after inserting %d test songs, songs length is incorrect", i/2+1) {
 			for j := 0; j <= i; j++ {
-				assert.Equal(t, fmt.Sprintf("song-%02d", j), pl.songs[j], "after inserting %d test songs, song at index %d is incorrect", i/2+1, j)
+				assert.Equal(t, songName(j), pl.songs[j], "after inserting %d test songs, song at index %d is incorrect", i/2+1, j)
 			}
 		}
 	}
-	if assert.Equal(t, 16, len(pl.songs), "after inserting 8 test songs, songs length is incorrect", 16) {
-		for i := 0; i < 16; i++ {
-			assert.Equal(t, fmt.Sprintf("song-%02d", i), pl.songs[i], "after inserting 8 test songs, song at index %d is incorrect", i)
-		}
+
+	expectedSongs := make([]string, 16)
+	for i := range expectedSongs {
+		expectedSongs[i] = songName(i)
 	}
+
+	assert.Equal(t, expectedSongs, pl.songs, "after inserting 8 songs, songs is incorrect")
 
 	pl.InsertSong("song-low", -1)
-	if assert.Equal(t, 17, len(pl.songs), "after inserting 9 test songs, songs length is incorrect", 16) {
-		assert.Equal(t, "song-low", pl.songs[0], "after inserting 9 test songs, song at index 0 is incorrect")
-		for i := 0; i < 16; i++ {
-			assert.Equal(t, fmt.Sprintf("song-%02d", i), pl.songs[i+1], "after inserting 9 test songs, song at index %d is incorrect", i+1)
-		}
-	}
+	expectedSongs = append([]string{"song-low"}, expectedSongs...)
+	assert.Equal(t, expectedSongs, pl.songs, "after inserting 9 songs, songs is incorrect")
 
 	pl.InsertSong("song-high", 32)
-	if assert.Equal(t, 18, len(pl.songs), "after inserting 10 test songs, songs length is incorrect", 16) {
-		assert.Equal(t, "song-low", pl.songs[0], "after inserting 10 test songs, song at index 0 is incorrect")
-		for i := 0; i < 16; i++ {
-			assert.Equal(t, fmt.Sprintf("song-%02d", i), pl.songs[i+1], "after inserting 10 test songs, song at index %d is incorrect", i+1)
-		}
-		assert.Equal(t, "song-high", pl.songs[17], "after inserting 10 test songs, song at index 17 is incorrect")
-	}
+	expectedSongs = append(expectedSongs, "song-high")
+	assert.Equal(t, expectedSongs, pl.songs, "after inserting 10 songs, songs is incorrect")
 }
 
 func TestPlaylist_RemoveSong(t *testing.T) {
 	pl := NewPlaylist(16, []string{}, 0)
 	pl.songs = make([]string, 16)
 	for i := range pl.songs {
-		pl.songs[i] = fmt.Sprintf("song-%02d", i)
+		pl.songs[i] = songName(i)
 	}
 
 	pl.RemoveSong(8)
@@ -120,7 +118,7 @@ func assertRemoved(t *testing.T, removed []int, pl *Playlist) {
 			if skip {
 				skipped++
 			} else {
-				assert.Equal(t, fmt.Sprintf("song-%02d", i), pl.songs[i-skipped], "after removing %v, playlist song at index %d is incorrect", i-skipped)
+				assert.Equal(t, songName(i), pl.songs[i-skipped], "after removing %v, playlist song at index %d is incorrect", i-skipped)
 			}
 		}
 	}
@@ -150,7 +148,4 @@ func TestPlaylist_Fill(t *testing.T) {
 		assert.Equal(t, in[i][0], low[i], "playlist fill inserted the wrong low sample at index %d", i)
 		assert.Equal(t, in[i][1], high[i], "playlist fill inserted the wrong high sample at index %d", i)
 	}
-}
-
-func TestNewPlaylist(t *testing.T) {
 }

@@ -77,23 +77,24 @@ func (s *state) pausesInCurrentSong(sample int64, currentSong upcomingSong) (pau
 
 	pauseBegin := int64(0)
 	for _, p := range s.Pauses {
-		if p.toggleIndex < uint64(sample) && playing != p.playing {
-			if p.playing {
-				pausesInCurrentSong += int64(p.toggleIndex) - pauseBegin
-			} else {
-				pauseBegin = int64(p.toggleIndex)
-			}
-
-			if p.toggleIndex < currentSong.startIndex {
-				if p.playing {
-					pausesInCurrentSong = 0
-				} else {
-					pausesInCurrentSong = int64(p.toggleIndex) - int64(currentSong.startIndex)
-				}
-			}
-
-			playing = p.playing
+		if uint64(sample) <= p.toggleIndex || playing == p.playing {
+			continue
 		}
+		if p.playing {
+			pausesInCurrentSong += int64(p.toggleIndex) - pauseBegin
+		} else {
+			pauseBegin = int64(p.toggleIndex)
+		}
+
+		if p.toggleIndex < currentSong.startIndex {
+			if p.playing {
+				pausesInCurrentSong = 0
+			} else {
+				pausesInCurrentSong = int64(p.toggleIndex) - int64(currentSong.startIndex)
+			}
+		}
+
+		playing = p.playing
 	}
 
 	if !playing {

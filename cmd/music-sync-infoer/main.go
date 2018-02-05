@@ -165,28 +165,40 @@ func drawLyrics(d *drawer, info *playbackInformation) {
 
 func lyricsHistory(height int, song upcomingSong, timeInSong time.Duration) []string {
 	if song.lyrics != nil && 0 < len(song.lyrics) {
-		nextLine := 0
-		for ; nextLine < len(song.lyrics); nextLine++ {
-			l := song.lyrics[nextLine]
-			if l != nil && 0 < len(l) && int64(timeInSong/time.Millisecond) < l[0].Timestamp {
-				break
-			}
-		}
+		nextLine := lyricsNextLine(song, timeInSong)
 
 		lines := make([]string, height)
 
 		for i := range lines {
-			lines[i] = ""
-			if 0 <= nextLine-i-1 {
-				for _, atom := range song.lyrics[nextLine-i-1] {
-					if atom.Timestamp < int64(timeInSong/time.Millisecond)+100 {
-						lines[i] += atom.Caption
-					}
-				}
-			}
+			lines[i] = lyricsBuildLine(nextLine-i-1, song, timeInSong)
 		}
 
 		return lines
 	}
 	return make([]string, height)
+}
+
+func lyricsNextLine(song upcomingSong, timeInSong time.Duration) int {
+	nextLine := 0
+	for ; nextLine < len(song.lyrics); nextLine++ {
+		l := song.lyrics[nextLine]
+		if l != nil && 0 < len(l) && int64(timeInSong/time.Millisecond) < l[0].Timestamp {
+			break
+		}
+	}
+	return nextLine
+}
+
+func lyricsBuildLine(index int, song upcomingSong, timeInSong time.Duration) string {
+	if index < 0 {
+		return ""
+	}
+
+	line := ""
+	for _, atom := range song.lyrics[index] {
+		if atom.Timestamp < int64(timeInSong/time.Millisecond)+100 {
+			line += atom.Caption
+		}
+	}
+	return line
 }
