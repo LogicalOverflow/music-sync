@@ -110,12 +110,7 @@ func TestFilterSongs(t *testing.T) {
 	}
 	for _, c := range cases {
 		actual := FilterSongs(c[0])
-		expected := c[1]
-		if assert.Equal(t, len(expected), len(actual), "FilterSong result length is wrong for %v", c[0]) {
-			for i := range expected {
-				assert.Equal(t, expected[i], actual[i], "FilterSong result at index %d is wrong for %v", i, c[0])
-			}
-		}
+		assert.Equal(t, c[1], actual, "FilterSong is wrong for %v", c[0])
 	}
 }
 

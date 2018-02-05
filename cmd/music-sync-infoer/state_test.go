@@ -11,12 +11,7 @@ func TestState_removeOldChunks(t *testing.T) {
 	for _, c := range removeOldChunksCases {
 		state := state{Chunks: c.chunks}
 		state.removeOldChunks(c.now)
-		if !assert.Equal(t, len(c.result), len(state.Chunks), "removeOldChunks removed the wrong number of chunks for case %v: %v", c, state.Chunks) {
-			continue
-		}
-		for i := range c.result {
-			assert.Equal(t, c.result[i], state.Chunks[i], "removeOldChunks resulted with the wrong chunk at index %d for case %v", i, c)
-		}
+		assert.Equal(t, c.result, state.Chunks, "removeOldChunks resulted in the wrong for case %v", c)
 	}
 
 }
@@ -44,12 +39,7 @@ func TestState_removeOldPauses(t *testing.T) {
 	for _, c := range removeOldPausesCases {
 		state := state{Pauses: c.pauses}
 		state.removeOldPauses(c.song)
-		if !assert.Equal(t, len(c.result), len(state.Pauses), "removeOldPauses removed the wrong number of pauses for case %v: %v", c, state.Pauses) {
-			continue
-		}
-		for i := range c.result {
-			assert.Equal(t, c.result[i], state.Pauses[i], "removeOldPauses resulted with the wrong pause at index %d for case %v", i, c)
-		}
+		assert.Equal(t, c.result, state.Pauses, "removeOldPauses resulted in the wrong pauses for case %v", c)
 	}
 }
 
