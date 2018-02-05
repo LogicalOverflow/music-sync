@@ -105,23 +105,26 @@ func TestPlaylist_RemoveSong(t *testing.T) {
 }
 
 func assertRemoved(t *testing.T, removed []int, pl *Playlist) {
-	if assert.Equal(t, 16-len(removed), len(pl.songs), "after removing %v, playlist songs has the wrong length", removed) {
-		skipped := 0
-		for i := 0; i < 16; i++ {
-			skip := false
-			for _, r := range removed {
-				if r == i {
-					skip = true
-				}
-			}
-
-			if skip {
-				skipped++
-			} else {
-				assert.Equal(t, songName(i), pl.songs[i-skipped], "after removing %v, playlist song at index %d is incorrect", i-skipped)
-			}
+	expected := make([]string, 16-len(removed))
+	skipped := 0
+	for i := 0; i < 16; i++ {
+		if intSliceContains(removed, i) {
+			skipped++
+		} else {
+			expected[i-skipped] = songName(i)
 		}
 	}
+
+	assert.Equal(t, expected, pl.songs, "after removing %v, playlist songs are incorrect", removed)
+}
+
+func intSliceContains(ints []int, t int) bool {
+	for _, i := range ints {
+		if t == i {
+			return true
+		}
+	}
+	return false
 }
 
 func TestPlaylist_Fill(t *testing.T) {

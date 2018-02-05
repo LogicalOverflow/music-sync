@@ -68,40 +68,48 @@ func (s *state) Info(now int64) *playbackInformation {
 		ProgressInSong:      progressInSong}
 }
 
+type pausesInCurrentSongState struct {
+	playing             bool
+	pausesInCurrentSong int64
+	pauseBegin          int64
+}
+
+func (picss *pausesInCurrentSongState) handlePause(sample int64, p pauseToggle, startIndex uint64) {
+	if uint64(sample) <= p.toggleIndex || picss.playing == p.playing {
+		return
+	}
+
+	if p.playing {
+		picss.pausesInCurrentSong += int64(p.toggleIndex) - picss.pauseBegin
+	} else {
+		picss.pauseBegin = int64(p.toggleIndex)
+	}
+
+	if p.toggleIndex < startIndex {
+		if p.playing {
+			picss.pausesInCurrentSong = 0
+		} else {
+			picss.pausesInCurrentSong = int64(p.toggleIndex) - int64(startIndex)
+		}
+	}
+
+	picss.playing = p.playing
+}
+
 func (s *state) pausesInCurrentSong(sample int64, currentSong upcomingSong) (pausesInCurrentSong int64, playing bool) {
 	s.PausesMutex.RLock()
 	defer s.PausesMutex.RUnlock()
 
-	playing = true
-	pausesInCurrentSong = int64(0)
-
-	pauseBegin := int64(0)
+	picss := &pausesInCurrentSongState{playing: true, pausesInCurrentSong: 0, pauseBegin: 0}
 	for _, p := range s.Pauses {
-		if uint64(sample) <= p.toggleIndex || playing == p.playing {
-			continue
-		}
-		if p.playing {
-			pausesInCurrentSong += int64(p.toggleIndex) - pauseBegin
-		} else {
-			pauseBegin = int64(p.toggleIndex)
-		}
-
-		if p.toggleIndex < currentSong.startIndex {
-			if p.playing {
-				pausesInCurrentSong = 0
-			} else {
-				pausesInCurrentSong = int64(p.toggleIndex) - int64(currentSong.startIndex)
-			}
-		}
-
-		playing = p.playing
+		picss.handlePause(sample, p, currentSong.startIndex)
 	}
 
-	if !playing {
-		pausesInCurrentSong += sample - pauseBegin
+	if !picss.playing {
+		picss.pausesInCurrentSong += sample - picss.pauseBegin
 	}
 
-	return
+	return picss.pausesInCurrentSong, picss.playing
 }
 
 func (s *state) removeOldPauses(currentSong upcomingSong) {

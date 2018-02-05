@@ -30,9 +30,9 @@ func (tms *timedMultiStreamer) Stream(samples [][2]float64) {
 	now := timing.GetSyncedTime()
 	for 0 < len(samples) {
 		if tms.syncing {
-			n, drained = tms.StreamSync(samples, now)
+			n, drained = tms.streamSync(samples, now)
 		} else {
-			n, drained = tms.StreamDirect(samples)
+			n, drained = tms.streamDirect(samples)
 		}
 		now += tms.samplesDuration(n)
 		samples = samples[n:]
@@ -44,7 +44,7 @@ func (tms *timedMultiStreamer) Stream(samples [][2]float64) {
 	}
 }
 
-func (tms *timedMultiStreamer) StreamDirect(samples [][2]float64) (n int, drained bool) {
+func (tms *timedMultiStreamer) streamDirect(samples [][2]float64) (n int, drained bool) {
 	for i := range samples {
 		s, _ := tms.samples.Remove()
 		if math.IsNaN(s[0]) {
@@ -55,7 +55,7 @@ func (tms *timedMultiStreamer) StreamDirect(samples [][2]float64) (n int, draine
 	return len(samples), false
 }
 
-func (tms *timedMultiStreamer) StreamSync(samples [][2]float64, now int64) (n int, drained bool) {
+func (tms *timedMultiStreamer) streamSync(samples [][2]float64, now int64) (n int, drained bool) {
 	s, t := tms.samples.Peek()
 	for math.IsNaN(s[0]) {
 		tms.samples.Remove()
