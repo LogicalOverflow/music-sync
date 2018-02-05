@@ -127,24 +127,28 @@ func playLoop() {
 
 	for {
 		streamer.Stream(samples)
-
-		for i := range samples {
-			for c := range samples[i] {
-				val := samples[i][c] * volume
-				if val < -1 {
-					val = -1
-				}
-				if val > +1 {
-					val = +1
-				}
-				valInt16 := int16(val * (1<<15 - 1))
-				low := byte(valInt16)
-				high := byte(valInt16 >> 8)
-				buf[i*4+c*2+0] = low
-				buf[i*4+c*2+1] = high
-			}
-		}
-
+		samplesToAudioBuf(samples, buf)
 		player.Write(buf)
 	}
+}
+
+func samplesToAudioBuf(samples [][2]float64, buf []byte) {
+	for i := range samples {
+		for c := range samples[i] {
+			buf[i*4+c*2+0], buf[i*4+c*2+1] = convertSampleToBytes(samples[i][c] * volume)
+		}
+	}
+}
+
+func convertSampleToBytes(val float64) (low, high byte) {
+	if val < -1 {
+		val = -1
+	}
+	if val > +1 {
+		val = +1
+	}
+	valInt16 := int16(val * (1<<15 - 1))
+	low = byte(valInt16)
+	high = byte(valInt16 >> 8)
+	return
 }

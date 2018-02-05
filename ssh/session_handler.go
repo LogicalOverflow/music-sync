@@ -80,23 +80,10 @@ func (s *session) createReadlineConfig() {
 func (s *session) handleLine(line string) {
 	cmd := parser.ParseCommand(line)
 
-	known := false
-	for _, c := range commands {
-		if c.Name == cmd.Command {
-			msg, ok := c.Exec(cmd.Parameters)
-			if ok {
-				if strings.HasSuffix(msg, "\n") {
-					msg = msg[:len(msg)-1]
-				}
-				fmt.Fprintln(s.ex, msg)
-			} else {
-				fmt.Fprintf(s.ex, "%s\n", c.usage())
-			}
-			known = true
-			break
-		}
-	}
-	if !known {
+	c := commandByName(cmd.Command)
+	if c != nil {
+		s.execCommand(*c, cmd.Parameters)
+	} else {
 		switch cmd.Command {
 		case "clear":
 			fmt.Fprint(s.ex, "\033[H")
@@ -106,6 +93,18 @@ func (s *session) handleLine(line string) {
 		default:
 			fmt.Fprintf(s.ex, "Unknown command '%s'. Type 'help' for help.\n", cmd.Command)
 		}
+	}
+}
+
+func (s *session) execCommand(c Command, args []string) {
+	msg, ok := c.Exec(args)
+	if ok {
+		if strings.HasSuffix(msg, "\n") {
+			msg = msg[:len(msg)-1]
+		}
+		fmt.Fprintln(s.ex, msg)
+	} else {
+		fmt.Fprintf(s.ex, "%s\n", c.usage())
 	}
 }
 
