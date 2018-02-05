@@ -78,11 +78,13 @@ func readWire(conn net.Conn) (proto.Message, error) {
 	data, _ := ioutil.ReadAll(r)
 	r.Close()
 
+	e := error(nil)
 	if err := proto.Unmarshal(data, m); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal inner protobuf (%s): %v", envelope.Type, err)
+		m = nil
+		e = fmt.Errorf("failed to unmarshal inner protobuf (%s): %v", envelope.Type, err)
 	}
+	return m, e
 
-	return m, nil
 }
 
 func sendWire(m proto.Message, conn net.Conn) error {

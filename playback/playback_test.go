@@ -2,6 +2,7 @@ package playback
 
 import (
 	"github.com/LogicalOverflow/music-sync/logging"
+	"github.com/faiface/beep"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -33,4 +34,23 @@ func TestSetVolume(t *testing.T) {
 		SetVolume(f)
 		assert.Equal(t, f, volume, "SetVolume did not set volume correctly")
 	}
+}
+
+func TestGetStreamer(t *testing.T) {
+	log.DefaultCutoffLevel = log.LevelOff
+	ad := AudioDir
+	AudioDir = "_playback_test_files"
+
+	var err error
+	var s beep.StreamSeekCloser
+
+	s, err = getStreamer("non-existent")
+	assert.NotNil(t, err, "getStreamer did not return an error for a non-existent file")
+	s, err = getStreamer("bad-format.mp3")
+	assert.NotNil(t, err, "getStreamer did not return an error for a file with a bad format")
+	s, err = getStreamer("okay.mp3")
+	assert.Nil(t, err, "getStreamer did return an error for an okay file")
+	assert.Equal(t, 443520, s.Len(), "getStreamer's stream returned an incorrect length")
+
+	AudioDir = ad
 }
