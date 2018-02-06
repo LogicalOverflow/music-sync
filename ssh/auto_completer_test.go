@@ -132,8 +132,8 @@ func TestSshAutoCompleter_filterByPrefix(t *testing.T) {
 }
 
 func TestSshAutoCompleter_commandArgOptionsWithPrefix(t *testing.T) {
-	commandsOld := make([]Command, len(commands))
-	copy(commandsOld, commands)
+	oldCommands := make([]Command, len(commands))
+	copy(oldCommands, commands)
 
 	autoCompleter := sshAutoCompleter{}
 	var options []string
@@ -148,7 +148,8 @@ func TestSshAutoCompleter_commandArgOptionsWithPrefix(t *testing.T) {
 		assert.Equal(t, runeSliceSliceToStringSlice(actualRune), c.result, "commandArgOptionsWithPrefix result is wrong for case %v", c)
 	}
 
-	copy(commands, commandsOld)
+	commands = make([]Command, len(oldCommands))
+	copy(commands, oldCommands)
 }
 
 func runeSliceSliceToStringSlice(rss [][]rune) []string {

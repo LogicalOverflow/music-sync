@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"github.com/LogicalOverflow/music-sync/playback"
 	"github.com/LogicalOverflow/music-sync/util"
+	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 )
@@ -36,6 +38,9 @@ type Command struct {
 }
 
 func (command Command) usage() string {
+	if command.Usage == "" {
+		return fmt.Sprintf("No usage information for command '%s'", command.Name)
+	}
 	return "Usage: " + command.Name + " " + command.Usage
 }
 
@@ -69,7 +74,8 @@ var helpCommand = Command{
 		var target *Command
 		for _, c := range commands {
 			if c.Name == args[0] {
-				target = &c
+				target = &Command{}
+				*target = c
 			}
 		}
 		if target == nil {
@@ -79,7 +85,7 @@ var helpCommand = Command{
 			case "exit":
 				return "exit: Closes the connection\nexit", true
 			default:
-				return fmt.Sprintf("Command %s does not exist.", args[0]), true
+				return fmt.Sprintf("Command '%s' does not exist.", args[0]), true
 			}
 		}
 		return target.Name + ": " + target.Info + "\n" + target.usage(), true
@@ -90,7 +96,7 @@ var helpCommand = Command{
 		}
 		options := []string{"clear", "exit"}
 		for _, c := range commands {
-			if strings.HasSuffix(c.Name, prefix) {
+			if strings.HasPrefix(c.Name, prefix) {
 				options = append(options, c.Name)
 			}
 		}
@@ -114,11 +120,14 @@ var lsCommand = Command{
 		if arg != 0 {
 			return []string{}
 		}
-		songs := util.ListAllSubDirs(playback.AudioDir)
-		options := make([]string, 0, len(songs))
-		for _, song := range songs {
-			if strings.HasPrefix(song, prefix) {
-				options = append(options, song)
+		subDirs := util.ListAllSubDirs(playback.AudioDir)
+		options := make([]string, 0, len(subDirs))
+		for _, subDir := range subDirs {
+			if !strings.HasPrefix(subDir, prefix) {
+				continue
+			}
+			if d, f := filepath.Split(subDir[len(prefix):]); d == "" && f == subDir[len(prefix):] {
+				options = append(options, subDir+string(os.PathSeparator))
 			}
 		}
 		return options
