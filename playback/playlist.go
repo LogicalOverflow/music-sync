@@ -6,6 +6,8 @@ import (
 	"sync"
 )
 
+const streamerBufferSize = 512
+
 // Playlist is a array of songs, which can then be streamed.
 // After reaching the end of the playlist, playback will resume at the start.
 type Playlist struct {
@@ -67,22 +69,22 @@ func (pl *Playlist) nextSong() (song string) {
 }
 
 func (pl *Playlist) pushStreamer(s beep.StreamSeekCloser) {
-	buf := make([][2]float64, 512)
+	buf := make([][2]float64, streamerBufferSize)
 	if pl.newSongHandler != nil {
 		go pl.newSongHandler(pl.sampleIndexWrite, pl.currentSong, int64(s.Len()))
 	}
 
 	for {
-		n, ok := len(buf), true
+		n, ok := streamerBufferSize, true
 		pl.callPauseToggleHandler()
 		if pl.playing {
 			n, ok = s.Stream(buf)
 			pl.pushBuffer(buf[:n])
 		} else {
-			pl.pushNanSamples(len(buf))
+			pl.pushNanSamples(streamerBufferSize)
 		}
 
-		if pl.shouldBreakStreamerPushLoop(n, ok, len(buf)) {
+		if pl.shouldBreakStreamerPushLoop(n, ok, streamerBufferSize) {
 			break
 		}
 	}

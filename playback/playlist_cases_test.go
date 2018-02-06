@@ -7,6 +7,14 @@ import (
 	"testing"
 )
 
+func storingNewSongHandler(startSampleIndex *uint64, filename *string, songLength *int64) func(uint64, string, int64) {
+	return func(ssi uint64, fn string, sl int64) {
+		*startSampleIndex = ssi
+		*filename = fn
+		*songLength = sl
+	}
+}
+
 var newPlaylistCases = []struct {
 	bufferSize   int
 	songs        []string
@@ -41,7 +49,7 @@ func songName(index int) string {
 func assertPlaylistSamplesInChan(t *testing.T, pl *Playlist, start, count int, message string) {
 	for i := 0; i < count; i++ {
 		assert.Equal(t, -float64(start+i), <-pl.low, message, start+i, "low")
-		assert.Equal(t, float64(start+i), <-pl.high, message, start+i, "high")
+		assert.Equal(t, +float64(start+i), <-pl.high, message, start+i, "high")
 	}
 }
 
@@ -82,4 +90,16 @@ func (ts *testStreamer) pushSamples(start, count int) {
 	for i := 0; i < count; i++ {
 		ts.samples <- [2]float64{-float64(start + i), float64(start + i)}
 	}
+}
+
+func (ts *testStreamer) pushSamplesInChunksWithPausesAndClose(pl *Playlist, chunkSize, chunkCount int, comm chan bool) {
+	for c := 0; c < chunkCount; c++ {
+		ts.pushSamples(chunkSize*c, chunkSize)
+		<-comm
+		pl.SetPlaying(false)
+		<-comm
+		pl.SetPlaying(true)
+	}
+	ts.pushSamples(chunkSize*chunkCount, chunkSize)
+	ts.Close()
 }
