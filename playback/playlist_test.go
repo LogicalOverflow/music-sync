@@ -1,17 +1,12 @@
 package playback
 
 import (
-	"fmt"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"math"
 	"sync"
 	"testing"
 )
-
-func songName(index int) string {
-	return fmt.Sprintf("song-%02d", index)
-}
 
 func TestPlaylist_SetPos(t *testing.T) {
 	pl := NewPlaylist(16, []string{}, 0)
@@ -151,36 +146,13 @@ func TestPlaylist_Fill(t *testing.T) {
 	}
 }
 
-type testStreamer struct {
-	samples  chan [2]float64
-	position int
-	length   int
-}
-
-func (ts *testStreamer) Err() error       { return nil }
-func (ts *testStreamer) Len() int         { return ts.length }
-func (ts *testStreamer) Position() int    { return ts.position }
-func (ts *testStreamer) Seek(p int) error { ts.position = p; return nil }
-func (ts *testStreamer) Close() error     { close(ts.samples); return nil }
-
-func (ts *testStreamer) Stream(samples [][2]float64) (n int, ok bool) {
-	n = 0
-	ok = true
-	for s := range ts.samples {
-		samples[n] = s
-		n++
-		if len(samples) <= n {
-			break
-		}
-	}
-	ts.position += n
-	return
-}
-
 func TestPlaylist_pushStreamer(t *testing.T) {
 	pl := NewPlaylist(16, []string{}, 0)
 	pl.currentSong = "the-song"
 	pl.sampleIndexWrite = 16
+
+	msg := "%d-th %s sample is incorrect when using pushStreamer"
+	msgNan := "%d-th %s pause sample is not none when using pushStreamer"
 
 	var startSampleIndex uint64
 	var filename string
@@ -200,38 +172,23 @@ func TestPlaylist_pushStreamer(t *testing.T) {
 	comm := make(chan bool)
 
 	go func() {
-		for i := 0; i < 512; i++ {
-			s.samples <- [2]float64{-float64(i), float64(i)}
-		}
+		s.pushSamples(0, 512)
 		<-comm
 		pl.SetPlaying(false)
 		<-comm
 		pl.SetPlaying(true)
-		for i := 512; i < 1024; i++ {
-			s.samples <- [2]float64{-float64(i), float64(i)}
-		}
+		s.pushSamples(512, 512)
 		s.Close()
 	}()
 
-	assert.Equal(t, -float64(0), <-pl.low, "0-th low sample is incorrect when using pushStreamer")
-	assert.Equal(t, float64(0), <-pl.high, "0-th high sample is incorrect when using pushStreamer")
+	assertPlaylistSamplesInChan(t, pl, 0, 1, msg)
 	comm <- true
-	for i := 1; i < 512; i++ {
-		assert.Equal(t, -float64(i), <-pl.low, "%d-th low sample is incorrect when using pushStreamer", i)
-		assert.Equal(t, float64(i), <-pl.high, "%d-th high sample is incorrect when using pushStreamer", i)
-	}
+	assertPlaylistSamplesInChan(t, pl, 1, 511, msg)
 
-	assert.True(t, math.IsNaN(<-pl.low), "0-th low pause sample is not none when using pushStreamer")
-	assert.True(t, math.IsNaN(<-pl.high), "0-th high pause sample is not nan when using pushStreamer")
+	assertPlaylistNanSamplesInChan(t, pl, 0, 1, msgNan)
 	comm <- true
-	for i := 1; i < 512; i++ {
-		assert.True(t, math.IsNaN(<-pl.low), "%d-th low pause sample is not none when using pushStreamer", i)
-		assert.True(t, math.IsNaN(<-pl.high), "%d-th high pause sample is not nan when using pushStreamer", i)
-	}
-	for i := 512; i < 1024; i++ {
-		assert.Equal(t, -float64(i), <-pl.low, "%d-th low sample is incorrect when using pushStreamer", i)
-		assert.Equal(t, float64(i), <-pl.high, "%d-th high sample is incorrect when using pushStreamer", i)
-	}
+	assertPlaylistNanSamplesInChan(t, pl, 1, 511, msgNan)
+	assertPlaylistSamplesInChan(t, pl, 512, 512, msg)
 
 	assert.Equal(t, uint64(16), startSampleIndex, "NewSongHandler called with wrong startSampleIndex")
 	assert.Equal(t, "the-song", filename, "NewSongHandler called with wrong filename")
@@ -328,33 +285,6 @@ func TestPlaylist_callPauseToggleHandler(t *testing.T) {
 	pl.playing = true
 }
 
-var newPlaylistCases = []struct {
-	bufferSize   int
-	songs        []string
-	nanBreakSize int
-}{
-	{
-		bufferSize:   16,
-		songs:        []string{},
-		nanBreakSize: 0,
-	},
-	{
-		bufferSize:   1,
-		songs:        []string{"song-1", "song-2", "song-3"},
-		nanBreakSize: 0,
-	},
-	{
-		bufferSize:   1,
-		songs:        []string{},
-		nanBreakSize: 48,
-	},
-	{
-		bufferSize:   16,
-		songs:        []string{"song-1", "song-2", "song-3"},
-		nanBreakSize: 48,
-	},
-}
-
 func TestNewPlaylist(t *testing.T) {
 	for _, c := range newPlaylistCases {
 		pl := NewPlaylist(c.bufferSize, c.songs, c.nanBreakSize)
@@ -390,12 +320,4 @@ func TestPlaylist_nextSong(t *testing.T) {
 
 	pl.songs = []string{}
 	assert.Equal(t, "", pl.nextSong(), "nextSong returned the wrong song name for playlist with no songs")
-}
-
-func newSongsList(count int) []string {
-	s := make([]string, count)
-	for i := 0; i < count; i++ {
-		s[i] = songName(i)
-	}
-	return s
 }

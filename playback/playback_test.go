@@ -7,6 +7,14 @@ import (
 	"testing"
 )
 
+func newSongsList(count int) []string {
+	s := make([]string, count)
+	for i := 0; i < count; i++ {
+		s[i] = songName(i)
+	}
+	return s
+}
+
 func TestCombineSamples(t *testing.T) {
 	testSamplesCount := 64
 	low := make([]float64, testSamplesCount)
