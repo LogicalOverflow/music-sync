@@ -14,8 +14,7 @@ type timedSample struct {
 
 type timedMultiStreamer struct {
 	format         beep.Format
-	streamers      []*queuedStream
-	chunks         []*queuedStream
+	chunks         []*queuedChunk
 	background     beep.Streamer
 	offset         int64
 	sampleDuration int64
@@ -101,14 +100,14 @@ func (tms *timedMultiStreamer) samplesCount(n int64) int {
 
 func (tms *timedMultiStreamer) Err() error { return nil }
 
-type queuedStream struct {
+type queuedChunk struct {
 	startTime int64
 	samples   [][2]float64
 	sampleN   int
 	pos       int
 }
 
-func (q *queuedStream) copySamples(target [][2]float64) (n int) {
+func (q *queuedChunk) copySamples(target [][2]float64) (n int) {
 	if q.sampleN <= q.pos {
 		return 0
 	}
@@ -118,10 +117,10 @@ func (q *queuedStream) copySamples(target [][2]float64) (n int) {
 	return
 }
 
-func (q *queuedStream) drained() bool {
+func (q *queuedChunk) drained() bool {
 	return q.sampleN <= q.pos
 }
 
-func newQueuedStream(startTime int64, samples [][2]float64) *queuedStream {
-	return &queuedStream{startTime: startTime, samples: samples, sampleN: len(samples)}
+func newQueuedStream(startTime int64, samples [][2]float64) *queuedChunk {
+	return &queuedChunk{startTime: startTime, samples: samples, sampleN: len(samples)}
 }

@@ -7,6 +7,7 @@ import (
 )
 
 const streamerBufferSize = 512
+const noSongNanSampleCount = 32768
 
 // Playlist is a array of songs, which can then be streamed.
 // After reaching the end of the playlist, playback will resume at the start.
@@ -37,9 +38,7 @@ func (pl *Playlist) StreamLoop() {
 	for {
 		filename := pl.nextSong()
 		if filename == "" {
-			for i := 0; i < 44100; i++ {
-				pl.pushSample(math.NaN(), math.NaN())
-			}
+			pl.pushNanSamples(noSongNanSampleCount)
 			continue
 		}
 
@@ -47,7 +46,7 @@ func (pl *Playlist) StreamLoop() {
 
 		s, err := getStreamer(filename)
 		if err != nil {
-			logger.Warnf("skipping song %s in playlist: %v", filename, err)
+			logger.Warnf("skipping song %s in playlist: failed to get streamer: %v", filename, err)
 			pl.position++
 			continue
 		}

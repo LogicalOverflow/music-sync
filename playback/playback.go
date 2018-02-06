@@ -107,8 +107,7 @@ func Init(sampleRate int) error {
 func initStreamer(sampleRate int) {
 	streamer = &timedMultiStreamer{
 		format:         format,
-		streamers:      make([]*queuedStream, 0),
-		chunks:         make([]*queuedStream, 0),
+		chunks:         make([]*queuedChunk, 0),
 		background:     beep.Silence(-1),
 		offset:         0,
 		sampleDuration: int64(format.SampleRate.D(1) / time.Nanosecond),
@@ -151,7 +150,7 @@ func convertSampleToBytes(val float64) (low, high byte) {
 	if val > +1 {
 		val = +1
 	}
-	valInt16 := int16(val * (1<<15 - 1))
+	valInt16 := int16(val * (1 << 15))
 	low = byte(valInt16)
 	high = byte(valInt16 >> 8)
 	return
