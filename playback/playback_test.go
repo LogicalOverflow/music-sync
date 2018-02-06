@@ -72,6 +72,8 @@ func TestGetStreamer(t *testing.T) {
 }
 
 func TestQueueChunk(t *testing.T) {
+	log.DefaultCutoffLevel = log.LevelOff
+
 	var oldStreamer *timedMultiStreamer
 	if streamer != nil {
 		*oldStreamer = *streamer
@@ -97,6 +99,9 @@ func TestQueueChunk(t *testing.T) {
 			assert.Equal(t, len(samples[j]), qc.sampleN, "%d-th streamer.chunks has the wrong sampleN", j)
 		}
 	}
+
+	streamer = nil
+	QueueChunk(startTime[0], 0, samples[0])
 
 	if oldStreamer != nil {
 		*streamer = *oldStreamer
