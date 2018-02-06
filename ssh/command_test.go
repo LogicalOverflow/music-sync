@@ -129,7 +129,7 @@ var commandTesters = []struct {
 				strings.Join(songFilesInDir("dir1", "subdir3"), "\n")},
 			execTestCase{args: []string{addPathSep("dir2")}, success: true, result: strings.Join(songFilesInDir("dir2"), "\n")},
 			execTestCase{args: []string{addPathSep("dir3")}, success: true, result: strings.Join(songFilesInDir("dir3"), "\n")},
-			execTestCase{args: []string{addPathSep("")}, result: allFilesLsResult},
+			execTestCase{args: []string{addPathSep("")}, success: true, result: allFilesLsResult},
 			execTestCase{args: []string{""}, success: true, result: allFilesLsResult},
 			execTestCase{args: []string{}, success: true, result: allFilesLsResult},
 		},
