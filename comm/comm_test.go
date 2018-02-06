@@ -3,7 +3,7 @@ package comm
 import (
 	"bytes"
 	"fmt"
-	"github.com/LogicalOverflow/music-sync/test_util"
+	"github.com/LogicalOverflow/music-sync/testutil"
 	"github.com/golang/protobuf/proto"
 	"github.com/stretchr/testify/assert"
 	"io"
@@ -58,7 +58,7 @@ func (tph *testPackageHandler) Handle(message proto.Message, _ net.Conn) {
 func (tph *testPackageHandler) Packages() []proto.Message {
 	tph.packagesMutex.RLock()
 	defer tph.packagesMutex.RUnlock()
-	return test_util.CloneMessages(tph.packages)
+	return testutil.CloneMessages(tph.packages)
 }
 
 func (tph *testPackageHandler) Latest() proto.Message {
@@ -137,6 +137,15 @@ func newPipeConnPair() (*pipeConn, *pipeConn) {
 	return &pipeConn{r: r1, w: w2}, &pipeConn{r: r2, w: w1}
 }
 
+func newPipeConnPairs(count int) ([]*pipeConn, []*pipeConn) {
+	l1 := make([]*pipeConn, count)
+	l2 := make([]*pipeConn, count)
+	for i := 0; i < count; i++ {
+		l1[i], l2[i] = newPipeConnPair()
+	}
+	return l1, l2
+}
+
 type fakeAddr struct {
 	network string
 }
@@ -151,9 +160,8 @@ type fakeListener struct {
 func (fl *fakeListener) Accept() (net.Conn, error) {
 	if c, ok := <-fl.conns; ok {
 		return c, nil
-	} else {
-		return nil, fmt.Errorf("closed")
 	}
+	return nil, fmt.Errorf("closed")
 }
 
 func (fl *fakeListener) NewConn(conn net.Conn) {

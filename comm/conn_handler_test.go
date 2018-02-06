@@ -46,13 +46,13 @@ func TestHandleConnection(t *testing.T) {
 	wg.Wait()
 }
 
+const invalidLastChannel = -32
+
 func TestServerConnectionAcceptor(t *testing.T) {
 	fl := newFakeListener()
 
-	var lastChan Channel = -5
-	NewClientHandler = func(channel Channel, conn MessageSender) {
-		lastChan = channel
-	}
+	var lastChan Channel = invalidLastChannel
+	NewClientHandler = func(channel Channel, conn MessageSender) { lastChan = channel }
 
 	var wg sync.WaitGroup
 
@@ -65,11 +65,7 @@ func TestServerConnectionAcceptor(t *testing.T) {
 		serverConnectionAcceptor(mms, fl)
 	}()
 
-	testConnsServer := make([]*pipeConn, 8)
-	testConnsClient := make([]*pipeConn, 8)
-	for i := 0; i < 8; i++ {
-		testConnsServer[i], testConnsClient[i] = newPipeConnPair()
-	}
+	testConnsServer, testConnsClient := newPipeConnPairs(8)
 
 	go func() {
 		defer wg.Done()
@@ -79,7 +75,7 @@ func TestServerConnectionAcceptor(t *testing.T) {
 			assert.True(t, containsConn(mms.connections, testConnsServer[i]), "serverConnectionAcceptor did not AddConn (new) to mms (%d conns in mms)", len(mms.connections))
 
 			assert.Equal(t, Channel(-1), lastChan, "serverConnectionAcceptor did not call NewClientHandler with the correct channel")
-			lastChan = -5
+			lastChan = invalidLastChannel
 
 			testConnsClient[i].Close()
 			time.Sleep(10 * time.Millisecond)
