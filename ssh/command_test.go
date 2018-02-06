@@ -111,6 +111,7 @@ var commandTesters = []struct {
 				addPathSep("dir1", "subdir3")}},
 			optionsTestCase{prefix: "dir2", arg: 0, result: []string{addPathSep("dir2")}},
 			optionsTestCase{prefix: addPathSep("dir2"), arg: 0, result: []string{}},
+			execTestCase{args: []string{addPathSep("non-existent", "directory")}, success: true, result: ""},
 			execTestCase{args: []string{addPathSep("dir1", "subdir1")}, success: true, result: strings.Join(songFilesInDir("dir1", "subdir1"), "\n")},
 			execTestCase{args: []string{addPathSep("dir1", "subdir2")}, success: true, result: strings.Join(songFilesInDir("dir1", "subdir2"), "\n")},
 			execTestCase{args: []string{addPathSep("dir1", "subdir3")}, success: true, result: strings.Join(songFilesInDir("dir1", "subdir3"), "\n")},
