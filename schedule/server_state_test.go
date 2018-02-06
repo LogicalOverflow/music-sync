@@ -2,6 +2,7 @@ package schedule
 
 import (
 	"github.com/LogicalOverflow/music-sync/comm"
+	"github.com/LogicalOverflow/music-sync/test_util"
 	"github.com/golang/protobuf/proto"
 	"github.com/stretchr/testify/assert"
 	"sync"
@@ -27,13 +28,7 @@ func (fms *fakeMessageSender) SendMessage(message proto.Message) error {
 func (fms *fakeMessageSender) Messages() []proto.Message {
 	fms.messagesMutex.RLock()
 	defer fms.messagesMutex.RUnlock()
-	if fms.messages == nil || len(fms.messages) == 0 {
-		return []proto.Message{}
-	}
-
-	ms := make([]proto.Message, len(fms.messages))
-	copy(ms, fms.messages)
-	return ms
+	return test_util.CloneMessages(fms.messages)
 }
 
 func assertFakeMessageSenderMessages(t *testing.T, fms *fakeMessageSender, expected []proto.Message, name string) {

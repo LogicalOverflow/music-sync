@@ -3,8 +3,10 @@ package comm
 import (
 	"github.com/LogicalOverflow/music-sync/logging"
 	"github.com/stretchr/testify/assert"
+	"net"
 	"sync"
 	"testing"
+	"time"
 )
 
 func TestHandleConnection(t *testing.T) {
@@ -42,4 +44,58 @@ func TestHandleConnection(t *testing.T) {
 	}()
 
 	wg.Wait()
+}
+
+func TestServerConnectionAcceptor(t *testing.T) {
+	fl := newFakeListener()
+
+	var lastChan Channel = -5
+	NewClientHandler = func(channel Channel, conn MessageSender) {
+		lastChan = channel
+	}
+
+	var wg sync.WaitGroup
+
+	wg.Add(2)
+
+	mms := &multiMessageSender{connections: make([]net.Conn, 0), channels: make(map[net.Conn][]Channel)}
+
+	go func() {
+		defer wg.Done()
+		serverConnectionAcceptor(mms, fl)
+	}()
+
+	testConnsServer := make([]*pipeConn, 8)
+	testConnsClient := make([]*pipeConn, 8)
+	for i := 0; i < 8; i++ {
+		testConnsServer[i], testConnsClient[i] = newPipeConnPair()
+	}
+
+	go func() {
+		defer wg.Done()
+		for i := range testConnsServer {
+			fl.NewConn(testConnsServer[i])
+			time.Sleep(10 * time.Millisecond)
+			assert.True(t, containsConn(mms.connections, testConnsServer[i]), "serverConnectionAcceptor did not AddConn (new) to mms (%d conns in mms)", len(mms.connections))
+
+			assert.Equal(t, Channel(-1), lastChan, "serverConnectionAcceptor did not call NewClientHandler with the correct channel")
+			lastChan = -5
+
+			testConnsClient[i].Close()
+			time.Sleep(10 * time.Millisecond)
+			assert.False(t, containsConn(mms.connections, testConnsServer[i]), "serverConnectionAcceptor did not DelConn (closed) from mms (%d conns in mms)", len(mms.connections))
+		}
+		fl.Close()
+	}()
+
+	wg.Wait()
+}
+
+func containsConn(cs []net.Conn, c net.Conn) bool {
+	for _, co := range cs {
+		if co == c {
+			return true
+		}
+	}
+	return false
 }

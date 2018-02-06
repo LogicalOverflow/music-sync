@@ -51,7 +51,8 @@ func serverConnectionAcceptor(mms *multiMessageSender, l net.Listener) {
 	for {
 		conn, err := l.Accept()
 		if err != nil {
-			logger.Warnf("failed to accept connection: %v", err)
+			logger.Fatalf("failed to accept connection: %v", err)
+			break
 		}
 		go func(conn net.Conn) {
 			mms.AddConn(conn)

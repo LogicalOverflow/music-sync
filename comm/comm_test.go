@@ -2,6 +2,8 @@ package comm
 
 import (
 	"bytes"
+	"fmt"
+	"github.com/LogicalOverflow/music-sync/test_util"
 	"github.com/golang/protobuf/proto"
 	"github.com/stretchr/testify/assert"
 	"io"
@@ -56,13 +58,7 @@ func (tph *testPackageHandler) Handle(message proto.Message, _ net.Conn) {
 func (tph *testPackageHandler) Packages() []proto.Message {
 	tph.packagesMutex.RLock()
 	defer tph.packagesMutex.RUnlock()
-	if tph.packages == nil || len(tph.packages) == 0 {
-		return []proto.Message{}
-	}
-
-	r := make([]proto.Message, len(tph.packages))
-	copy(r, tph.packages)
-	return r
+	return test_util.CloneMessages(tph.packages)
 }
 
 func (tph *testPackageHandler) Latest() proto.Message {
@@ -128,7 +124,7 @@ type pipeConn struct {
 
 func (p *pipeConn) Read(b []byte) (n int, err error)   { return p.r.Read(b) }
 func (p *pipeConn) Write(b []byte) (n int, err error)  { return p.w.Write(b) }
-func (p *pipeConn) LocalAddr() net.Addr                { return nil }
+func (p *pipeConn) LocalAddr() net.Addr                { return fakeAddr{"fake-pipe-conn"} }
 func (p *pipeConn) RemoteAddr() net.Addr               { return nil }
 func (p *pipeConn) SetDeadline(t time.Time) error      { return nil }
 func (p *pipeConn) SetReadDeadline(t time.Time) error  { return nil }
@@ -139,4 +135,34 @@ func newPipeConnPair() (*pipeConn, *pipeConn) {
 	r1, w1 := io.Pipe()
 	r2, w2 := io.Pipe()
 	return &pipeConn{r: r1, w: w2}, &pipeConn{r: r2, w: w1}
+}
+
+type fakeAddr struct {
+	network string
+}
+
+func (fa fakeAddr) Network() string { return fa.network }
+func (fa fakeAddr) String() string  { return fa.network }
+
+type fakeListener struct {
+	conns chan net.Conn
+}
+
+func (fl *fakeListener) Accept() (net.Conn, error) {
+	if c, ok := <-fl.conns; ok {
+		return c, nil
+	} else {
+		return nil, fmt.Errorf("closed")
+	}
+}
+
+func (fl *fakeListener) NewConn(conn net.Conn) {
+	fl.conns <- conn
+}
+
+func (fl *fakeListener) Close() error   { close(fl.conns); return nil }
+func (fl *fakeListener) Addr() net.Addr { return fakeAddr{"fake-listener"} }
+
+func newFakeListener() *fakeListener {
+	return &fakeListener{conns: make(chan net.Conn)}
 }
