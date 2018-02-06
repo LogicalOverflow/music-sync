@@ -72,7 +72,7 @@ func TestGetStreamer(t *testing.T) {
 }
 
 func TestQueueChunk(t *testing.T) {
-	var oldStreamer *timedMultiStreamer = nil
+	var oldStreamer *timedMultiStreamer
 	if streamer != nil {
 		*oldStreamer = *streamer
 	}
