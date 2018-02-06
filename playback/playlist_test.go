@@ -67,10 +67,7 @@ func TestPlaylist_InsertSong(t *testing.T) {
 		}
 	}
 
-	expectedSongs := make([]string, 16)
-	for i := range expectedSongs {
-		expectedSongs[i] = songName(i)
-	}
+	expectedSongs := newSongsList(16)
 
 	assert.Equal(t, expectedSongs, pl.songs, "after inserting 8 songs, songs is incorrect")
 
@@ -84,26 +81,25 @@ func TestPlaylist_InsertSong(t *testing.T) {
 }
 
 func TestPlaylist_RemoveSong(t *testing.T) {
-	pl := NewPlaylist(16, []string{}, 0)
-	pl.songs = make([]string, 16)
-	for i := range pl.songs {
-		pl.songs[i] = songName(i)
-	}
+	pl := NewPlaylist(16, newSongsList(16), 0)
 
-	pl.RemoveSong(8)
+	assert.Equal(t, songName(8), pl.RemoveSong(8), "remove returned the wrong song name")
 	assertRemoved(t, []int{8}, pl)
 
-	pl.RemoveSong(10)
+	assert.Equal(t, songName(11), pl.RemoveSong(10), "remove returned the wrong song name")
 	assertRemoved(t, []int{8, 11}, pl)
 
-	pl.RemoveSong(1)
+	assert.Equal(t, songName(1), pl.RemoveSong(1), "remove returned the wrong song name")
 	assertRemoved(t, []int{1, 8, 11}, pl)
 
-	pl.RemoveSong(-2)
+	assert.Equal(t, songName(0), pl.RemoveSong(-2), "remove returned the wrong song name")
 	assertRemoved(t, []int{0, 1, 8, 11}, pl)
 
-	pl.RemoveSong(22)
+	assert.Equal(t, songName(15), pl.RemoveSong(22), "remove returned the wrong song name")
 	assertRemoved(t, []int{0, 1, 8, 11, 15}, pl)
+
+	pl.songs = []string{}
+	assert.Equal(t, "", pl.RemoveSong(0), "remove returned the wrong song name for playlist without songs")
 }
 
 func assertRemoved(t *testing.T, removed []int, pl *Playlist) {
@@ -330,4 +326,76 @@ func TestPlaylist_callPauseToggleHandler(t *testing.T) {
 	}
 	pl.playingLast = true
 	pl.playing = true
+}
+
+var newPlaylistCases = []struct {
+	bufferSize   int
+	songs        []string
+	nanBreakSize int
+}{
+	{
+		bufferSize:   16,
+		songs:        []string{},
+		nanBreakSize: 0,
+	},
+	{
+		bufferSize:   1,
+		songs:        []string{"song-1", "song-2", "song-3"},
+		nanBreakSize: 0,
+	},
+	{
+		bufferSize:   1,
+		songs:        []string{},
+		nanBreakSize: 48,
+	},
+	{
+		bufferSize:   16,
+		songs:        []string{"song-1", "song-2", "song-3"},
+		nanBreakSize: 48,
+	},
+}
+
+func TestNewPlaylist(t *testing.T) {
+	for _, c := range newPlaylistCases {
+		pl := NewPlaylist(c.bufferSize, c.songs, c.nanBreakSize)
+		assert.Equal(t, c.bufferSize, cap(pl.low), "playlist low chan has wrong capacity for case %v", c)
+		assert.Equal(t, c.bufferSize, cap(pl.high), "playlist high chan has wrong capacity for case %v", c)
+		assert.Equal(t, c.songs, pl.songs, "playlist has wrong songs for case %v", c)
+		assert.Equal(t, c.nanBreakSize, pl.nanBreakSize, "playlist has wrong nanBreakSize for case %v", c)
+	}
+}
+
+func TestPlaylist_Pos(t *testing.T) {
+	pl := NewPlaylist(16, []string{}, 0)
+	for j := 0; j < 16; j++ {
+		pl.position = j
+		assert.Equal(t, 0, pl.Pos(), "playlist pos returned the wrong value with 0 songs at position %d", j)
+	}
+	for i := 1; i < 16; i++ {
+		pl := NewPlaylist(16, newSongsList(i), 0)
+		for j := 0; j < 16; j++ {
+			pl.position = j
+			assert.Equal(t, j%i, pl.Pos(), "playlist pos returned the wrong value with %d songs at position %d", i, j)
+		}
+	}
+}
+
+func TestPlaylist_nextSong(t *testing.T) {
+	pl := NewPlaylist(16, newSongsList(16), 0)
+	for i := 1; i <= 64; i++ {
+		pl.position++
+		assert.Equal(t, songName(i%16), pl.nextSong(), "nextSong returned the wrong song name after calling it %d times", i)
+		assert.Equal(t, i%16, pl.position, "nextSong returned set the position incorrectly after calling it %d times", i)
+	}
+
+	pl.songs = []string{}
+	assert.Equal(t, "", pl.nextSong(), "nextSong returned the wrong song name for playlist with no songs")
+}
+
+func newSongsList(count int) []string {
+	s := make([]string, count)
+	for i := 0; i < count; i++ {
+		s[i] = songName(i)
+	}
+	return s
 }

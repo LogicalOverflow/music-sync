@@ -139,7 +139,12 @@ func (pl *Playlist) SetPos(pos int) {
 
 // Pos returns the position of the song currently being played.
 func (pl *Playlist) Pos() int {
-	return pl.position
+	pl.songsMutex.RLock()
+	defer pl.songsMutex.RUnlock()
+	if len(pl.songs) == 0 {
+		return 0
+	}
+	return pl.position % len(pl.songs)
 }
 
 // Songs returns all songs in the playlist.

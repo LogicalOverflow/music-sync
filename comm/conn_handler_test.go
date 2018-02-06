@@ -71,14 +71,14 @@ func TestServerConnectionAcceptor(t *testing.T) {
 		defer wg.Done()
 		for i := range testConnsServer {
 			fl.NewConn(testConnsServer[i])
-			time.Sleep(10 * time.Millisecond)
+			time.Sleep(20 * time.Millisecond)
 			assert.True(t, containsConn(mms.connections, testConnsServer[i]), "serverConnectionAcceptor did not AddConn (new) to mms (%d conns in mms)", len(mms.connections))
 
 			assert.Equal(t, Channel(-1), lastChan, "serverConnectionAcceptor did not call NewClientHandler with the correct channel")
 			lastChan = invalidLastChannel
 
 			testConnsClient[i].Close()
-			time.Sleep(10 * time.Millisecond)
+			time.Sleep(20 * time.Millisecond)
 			assert.False(t, containsConn(mms.connections, testConnsServer[i]), "serverConnectionAcceptor did not DelConn (closed) from mms (%d conns in mms)", len(mms.connections))
 		}
 		fl.Close()
