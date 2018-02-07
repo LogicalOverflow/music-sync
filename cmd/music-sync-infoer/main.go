@@ -190,7 +190,7 @@ func lyricsNextLine(song upcomingSong, timeInSong time.Duration) int {
 }
 
 func lyricsBuildLine(index int, song upcomingSong, timeInSong time.Duration) string {
-	if index < 0 {
+	if index < 0 || len(song.lyrics) <= index {
 		return ""
 	}
 
