@@ -56,7 +56,7 @@ func TestState_pausesInCurrentSong(t *testing.T) {
 func TestState_Info(t *testing.T) {
 	for _, c := range infoTestCases {
 		actual := c.state.Info(c.now)
-		assert.Equal(t, c.info, *actual, "state Info returned wrong info for case %v", c)
+		assert.Equal(t, c.info, actual, "state Info returned wrong info for case %v", c)
 	}
 }
 

@@ -165,7 +165,7 @@ var pausesInCurrentSongCases = []struct {
 var infoTestCases = []struct {
 	now   int64
 	state state
-	info  playbackInformation
+	info  *playbackInformation
 }{
 	{
 		now: 0e9,
@@ -175,7 +175,7 @@ var infoTestCases = []struct {
 			Pauses: []pauseToggle{},
 			Volume: 0.1,
 		},
-		info: playbackInformation{
+		info: &playbackInformation{
 			CurrentSong:         upcomingSong{filename: "None", startIndex: 0, length: 0},
 			CurrentSample:       0,
 			PausesInCurrentSong: 0,
@@ -195,7 +195,7 @@ var infoTestCases = []struct {
 			Pauses: []pauseToggle{},
 			Volume: 0.1,
 		},
-		info: playbackInformation{
+		info: &playbackInformation{
 			CurrentSong:         upcomingSong{filename: "the-song", startIndex: 15, length: 60},
 			CurrentSample:       45,
 			PausesInCurrentSong: 0,
@@ -215,7 +215,7 @@ var infoTestCases = []struct {
 			Pauses: []pauseToggle{{playing: true, toggleIndex: 0}, {playing: false, toggleIndex: 30}, {playing: true, toggleIndex: 45}},
 			Volume: 0.1,
 		},
-		info: playbackInformation{
+		info: &playbackInformation{
 			CurrentSong:         upcomingSong{filename: "the-song", startIndex: 15, length: 60},
 			CurrentSample:       60,
 			PausesInCurrentSong: 15,
