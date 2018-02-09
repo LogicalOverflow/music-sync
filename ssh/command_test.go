@@ -39,6 +39,7 @@ func (etc ExecTestCase) Test(t *testing.T, command Command) {
 		assert.Equal(t, etc.Result, r, "command %s returned wrong result for args %v", command.Name, etc.Args)
 	}
 }
+
 func TestRegisterCommand(t *testing.T) {
 	oldCommands := make([]Command, len(commands))
 	copy(oldCommands, commands)
