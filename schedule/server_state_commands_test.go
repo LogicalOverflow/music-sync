@@ -23,6 +23,9 @@ func (fs *fakeSender) SendMessage(message proto.Message) error {
 	return nil
 }
 
+var noArgsError = testutil.ExecTestCase{Args: []string{}, Result: "", Success: false}
+var firstArgNoNumberError = testutil.ExecTestCase{Args: []string{"not-a-number"}, Result: "", Success: false}
+
 func TestServerState_queueCommand(t *testing.T) {
 	ss := newTestServerState([]string{}, false)
 
@@ -38,7 +41,7 @@ func TestServerState_queueCommand(t *testing.T) {
 			testutil.OptionsTestCase{Prefix: "", Arg: 1, Result: []string{}},
 			testutil.OptionsTestCase{Prefix: "song", Arg: 0, Result: []string{"song1.mp3", "song2.mp3", "song3.mp3"}},
 			testutil.OptionsTestCase{Prefix: "dir3", Arg: 0, Result: []string{"dir3" + pathSeparator + "song1.mp3", "dir3" + pathSeparator + "song2.mp3", "dir3" + pathSeparator + "song3.mp3"}},
-			testutil.ExecTestCase{Args: []string{}, Result: "", Success: false},
+			noArgsError,
 			testutil.ExecTestCase{Args: []string{"non-existent.mp3"}, Result: "no song matches the glob pattern non-existent.mp3", Success: true},
 			testutil.ExecTestCase{Args: []string{"song1.mp3"}, Result: "1 song(s) added to playlist: song1.mp3", Success: true},
 			testutil.ExecTestCase{Args: []string{"dir1/*"}, Result: "3 song(s) added to playlist: dir1" + pathSeparator + "song1.mp3, dir1" + pathSeparator + "song2.mp3, dir1" + pathSeparator + "song3.mp3", Success: true},
@@ -85,8 +88,7 @@ func TestServerState_removeCommand(t *testing.T) {
 	ct := testutil.CommandTesters{
 		Command: cmd,
 		Testers: []testutil.CommandTester{
-			testutil.ExecTestCase{Args: []string{}, Result: "", Success: false},
-			testutil.ExecTestCase{Args: []string{"abc"}, Result: "", Success: false},
+			noArgsError, firstArgNoNumberError,
 			testutil.ExecTestCase{Args: []string{"4"}, Result: "removed song song-4 at position 4 from playlist", Success: true},
 			testutil.ExecTestCase{Args: []string{"0"}, Result: "removed song song-0 at position 0 from playlist", Success: true},
 		},
@@ -109,8 +111,7 @@ func TestServerState_jumpCommand(t *testing.T) {
 	ct := testutil.CommandTesters{
 		Command: cmd,
 		Testers: []testutil.CommandTester{
-			testutil.ExecTestCase{Args: []string{}, Result: "", Success: false},
-			testutil.ExecTestCase{Args: []string{"abc"}, Result: "", Success: false},
+			noArgsError, firstArgNoNumberError,
 			testutil.ExecTestCase{Args: []string{"3"}, Result: "jumped to 3", Success: true},
 		},
 	}
@@ -133,8 +134,7 @@ func TestServerState_volumeCommand(t *testing.T) {
 	ct := testutil.CommandTesters{
 		Command: cmd,
 		Testers: []testutil.CommandTester{
-			testutil.ExecTestCase{Args: []string{}, Result: "", Success: false},
-			testutil.ExecTestCase{Args: []string{"def"}, Result: "", Success: false},
+			noArgsError, firstArgNoNumberError,
 			testutil.ExecTestCase{Args: []string{".5"}, Result: "setting volume to 0.500", Success: true},
 		},
 	}
