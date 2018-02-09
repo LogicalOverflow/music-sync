@@ -6,10 +6,14 @@ import (
 	"github.com/LogicalOverflow/music-sync/ssh"
 	"github.com/golang/protobuf/proto"
 	"github.com/stretchr/testify/assert"
+	"os"
+	"path"
 	"testing"
 )
 
 // TODO: test queue exec/options
+
+const pathSeparator = string(os.PathSeparator)
 
 type fakeSender struct {
 	lastMessage proto.Message
@@ -74,6 +78,37 @@ func (c CommandTesters) Test(t *testing.T) {
 	if c.after != nil {
 		c.after()
 	}
+}
+
+func TestServerState_queueCommand(t *testing.T) {
+	ss := serverState{}
+	ss.playlist = playback.NewPlaylist(0, []string{}, 0)
+
+	cmd := ss.queueCommand()
+	assert.NotNil(t, cmd, "serverState queueCommand is nil")
+
+	ct := CommandTesters{
+		command: cmd,
+		before: func() {
+			playback.AudioDir = path.Join("_queue_test_files")
+		},
+		testers: []CommandTester{
+			ExecTestCase{Args: []string{}, Result: "", Success: false},
+			ExecTestCase{Args: []string{"non-existent.mp3"}, Result: "no song matches the glob pattern non-existent.mp3", Success: true},
+			ExecTestCase{Args: []string{"song1.mp3"}, Result: "1 song(s) added to playlist: song1.mp3", Success: true},
+			ExecTestCase{Args: []string{"dir1/*"}, Result: "3 song(s) added to playlist: dir1" + pathSeparator + "song1.mp3, dir1" + pathSeparator + "song2.mp3, dir1" + pathSeparator + "song3.mp3", Success: true},
+			ExecTestCase{Args: []string{"song2.mp3", "abc"}, Result: "1 song(s) added to playlist: song2.mp3", Success: true},
+			ExecTestCase{Args: []string{"song3.mp3", "1"}, Result: "1 song(s) added to playlist: song3.mp3", Success: true},
+		},
+	}
+
+	ct.Test(t)
+	assert.Equal(t,
+		[]string{"song1.mp3", "song3.mp3", "dir1" + pathSeparator + "song1.mp3",
+			"dir1" + pathSeparator + "song2.mp3", "dir1" + pathSeparator + "song3.mp3", "song2.mp3"},
+		ss.playlist.Songs(), "serverState queueCommand did not add the songs properly")
+
+	// TODO: options cases
 }
 
 func TestServerState_playlistCommand(t *testing.T) {
