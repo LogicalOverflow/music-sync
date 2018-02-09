@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-type CommandInterface interface {
+type commandInterface interface {
 	GetName() string
 	Exec([]string) (string, bool)
 	Options(string, int) []string
@@ -13,7 +13,7 @@ type CommandInterface interface {
 
 // CommandTester tests a command
 type CommandTester interface {
-	Test(t *testing.T, command CommandInterface)
+	Test(t *testing.T, command commandInterface)
 }
 
 // OptionsTestCase tests the result of calling the options func on a command
@@ -24,7 +24,7 @@ type OptionsTestCase struct {
 }
 
 // Test executes the OptionsTestCase and asserts the results
-func (otc OptionsTestCase) Test(t *testing.T, command CommandInterface) {
+func (otc OptionsTestCase) Test(t *testing.T, command commandInterface) {
 	r := command.Options(otc.Prefix, otc.Arg)
 	assert.Equal(t, otc.Result, r, "command %s returned wrong options for arg %d with prefix %s", command.GetName(), otc.Arg, otc.Prefix)
 }
@@ -38,7 +38,7 @@ type ExecTestCase struct {
 }
 
 // Test executes the ExecTestCase and asserts the results
-func (etc ExecTestCase) Test(t *testing.T, command CommandInterface) {
+func (etc ExecTestCase) Test(t *testing.T, command commandInterface) {
 	if etc.Before != nil {
 		etc.Before()
 	}
@@ -50,7 +50,7 @@ func (etc ExecTestCase) Test(t *testing.T, command CommandInterface) {
 
 // CommandTesters holds a command and its testers
 type CommandTesters struct {
-	Command CommandInterface
+	Command commandInterface
 	Testers []CommandTester
 	Before  func()
 	After   func()

@@ -50,6 +50,7 @@ func (command Command) Options(prefix string, arg int) []string {
 	return command.OptionsFunc(prefix, arg)
 }
 
+// GetName returns the printable name of the command
 func (command Command) GetName() string {
 	return command.Name
 }

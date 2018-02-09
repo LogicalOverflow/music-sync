@@ -23,8 +23,7 @@ func (fs *fakeSender) SendMessage(message proto.Message) error {
 }
 
 func TestServerState_queueCommand(t *testing.T) {
-	ss := serverState{}
-	ss.playlist = playback.NewPlaylist(0, []string{}, 0)
+	ss := newTestServerState([]string{}, false)
 
 	cmd := ss.queueCommand()
 	assert.NotNil(t, cmd, "serverState queueCommand is nil")
@@ -57,9 +56,7 @@ func TestServerState_queueCommand(t *testing.T) {
 }
 
 func TestServerState_playlistCommand(t *testing.T) {
-	ss := serverState{}
-	ss.playlist = playback.NewPlaylist(0, []string{}, 0)
-	ss.playlist.SetPlaying(false)
+	ss := newTestServerState([]string{}, false)
 
 	cmd := ss.playlistCommand()
 	assert.NotNil(t, cmd, "serverState playlistCommand is nil")
@@ -79,8 +76,7 @@ func TestServerState_playlistCommand(t *testing.T) {
 }
 
 func TestServerState_removeCommand(t *testing.T) {
-	ss := serverState{}
-	ss.playlist = playback.NewPlaylist(0, []string{"song-0", "song-1", "song-2", "song-3", "song-4"}, 0)
+	ss := newTestServerState([]string{"song-0", "song-1", "song-2", "song-3", "song-4"}, false)
 
 	cmd := ss.removeCommand()
 	assert.NotNil(t, cmd, "serverState removeCommand is nil")
@@ -101,10 +97,9 @@ func TestServerState_removeCommand(t *testing.T) {
 }
 
 func TestServerState_jumpCommand(t *testing.T) {
-	fs := &fakeSender{}
+	ss := newTestServerState([]string{"song-0", "song-1", "song-2", "song-3", "song-4"}, false)
 
-	ss := serverState{}
-	ss.playlist = playback.NewPlaylist(0, []string{"song-0", "song-1", "song-2", "song-3", "song-4"}, 0)
+	fs := &fakeSender{}
 	ss.sender = fs
 
 	cmd := ss.jumpCommand()
@@ -138,7 +133,7 @@ func TestServerState_volumeCommand(t *testing.T) {
 		Command: cmd,
 		Testers: []testutil.CommandTester{
 			testutil.ExecTestCase{Args: []string{}, Result: "", Success: false},
-			testutil.ExecTestCase{Args: []string{"abc"}, Result: "", Success: false},
+			testutil.ExecTestCase{Args: []string{"def"}, Result: "", Success: false},
 			testutil.ExecTestCase{Args: []string{".5"}, Result: "setting volume to 0.500", Success: true},
 		},
 	}
@@ -155,9 +150,7 @@ func TestServerState_volumeCommand(t *testing.T) {
 }
 
 func TestServerState_pauseCommand(t *testing.T) {
-	ss := serverState{}
-	ss.playlist = playback.NewPlaylist(0, []string{}, 0)
-	ss.playlist.SetPlaying(true)
+	ss := newTestServerState([]string{}, true)
 
 	cmd := ss.pauseCommand()
 	assert.NotNil(t, cmd, "serverState pauseCommand is nil")
@@ -175,9 +168,7 @@ func TestServerState_pauseCommand(t *testing.T) {
 }
 
 func TestServerState_resumeCommand(t *testing.T) {
-	ss := serverState{}
-	ss.playlist = playback.NewPlaylist(0, []string{}, 0)
-	ss.playlist.SetPlaying(false)
+	ss := newTestServerState([]string{}, false)
 
 	cmd := ss.resumeCommand()
 	assert.NotNil(t, cmd, "serverState resumeCommand is nil")
@@ -206,4 +197,11 @@ func TestSServerState_playbackSetCommand(t *testing.T) {
 	assert.Equal(t, "resume", resume.Name, "serverState resumeCommand has the wrong name")
 	assert.Equal(t, "", resume.Usage, "serverState resumeCommand has the wrong usage")
 	assert.Equal(t, "resumes playback", resume.Info, "serverState resumeCommand has the wrong info")
+}
+
+func newTestServerState(songs []string, playing bool) serverState {
+	ss := serverState{}
+	ss.playlist = playback.NewPlaylist(0, songs, 0)
+	ss.playlist.SetPlaying(playing)
+	return ss
 }
