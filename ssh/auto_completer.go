@@ -49,7 +49,7 @@ func (sac *sshAutoCompleter) commandsWithPrefix(cmd parser.ParsedCommand, pos in
 
 func (sac *sshAutoCompleter) commandArgOptionsWithPrefix(cmd parser.ParsedCommand, pos int, result [][]rune) [][]rune {
 	c := commandByName(cmd.Command)
-	if c != nil && c.Options != nil {
+	if c != nil {
 		argNum := len(cmd.Parameters) - 1
 		arg := cmd.Parameters[argNum]
 		for _, o := range sac.filterByPrefix(c.Options(arg, argNum), arg) {

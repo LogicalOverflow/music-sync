@@ -69,11 +69,11 @@ func (ss *serverState) queueCommandExec(args []string) (string, bool) {
 
 func (ss *serverState) queueCommand() ssh.Command {
 	return ssh.Command{
-		Name:  "queue",
-		Usage: "filename [position in playlist]",
-		Info:  "adds a song to the playlist",
-		Exec:  ss.queueCommandExec,
-		Options: func(prefix string, arg int) []string {
+		Name:     "queue",
+		Usage:    "filename [position in playlist]",
+		Info:     "adds a song to the playlist",
+		ExecFunc: ss.queueCommandExec,
+		OptionsFunc: func(prefix string, arg int) []string {
 			if arg != 0 {
 				return []string{}
 			}
@@ -117,10 +117,10 @@ func (ss *serverState) playlistCommandExc([]string) (string, bool) {
 
 func (ss *serverState) playlistCommand() ssh.Command {
 	return ssh.Command{
-		Name:  "playlist",
-		Usage: "",
-		Info:  "prints the current playlist",
-		Exec:  ss.playlistCommandExc,
+		Name:     "playlist",
+		Usage:    "",
+		Info:     "prints the current playlist",
+		ExecFunc: ss.playlistCommandExc,
 	}
 }
 
@@ -129,7 +129,7 @@ func (ss *serverState) removeCommand() ssh.Command {
 		Name:  "remove",
 		Usage: "position",
 		Info:  "removes a song from the playlist",
-		Exec: func(args []string) (string, bool) {
+		ExecFunc: func(args []string) (string, bool) {
 			pos, ok := parseIntParam(args, 0)
 			if !ok {
 				return "", false
@@ -145,7 +145,7 @@ func (ss *serverState) jumpCommand() ssh.Command {
 		Name:  "jump",
 		Usage: "position",
 		Info:  "jumps in the playlist",
-		Exec: func(args []string) (string, bool) {
+		ExecFunc: func(args []string) (string, bool) {
 			pos, ok := parseIntParam(args, 0)
 			if !ok {
 				return "", false
@@ -161,7 +161,7 @@ func (ss *serverState) volumeCommand() ssh.Command {
 		Name:  "volume",
 		Usage: "volume",
 		Info:  "set the playback volume",
-		Exec: func(args []string) (string, bool) {
+		ExecFunc: func(args []string) (string, bool) {
 			var ok bool
 			ss.volume, ok = parseFloatParam(args, 0)
 			if !ok {
@@ -194,7 +194,7 @@ func (ss *serverState) playbackSetCommand(targetPlaying bool) ssh.Command {
 		Name:  action,
 		Usage: "",
 		Info:  action + "s playback",
-		Exec: func([]string) (string, bool) {
+		ExecFunc: func([]string) (string, bool) {
 			ss.playlist.SetPlaying(targetPlaying)
 			return "playback " + action + "d", true
 		},

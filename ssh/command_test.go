@@ -3,42 +3,12 @@ package ssh
 import (
 	"fmt"
 	"github.com/LogicalOverflow/music-sync/playback"
+	"github.com/LogicalOverflow/music-sync/testutil"
 	"github.com/stretchr/testify/assert"
 	"os"
 	"strings"
 	"testing"
 )
-
-// CommandTester tests a command
-type CommandTester interface {
-	Test(t *testing.T, command Command)
-}
-
-// OptionsTestCase tests the result of calling the options func on a command
-type OptionsTestCase struct {
-	Prefix string
-	Arg    int
-	Result []string
-}
-
-func (otc OptionsTestCase) Test(t *testing.T, command Command) {
-	r := command.Options(otc.Prefix, otc.Arg)
-	assert.Equal(t, otc.Result, r, "command %s returned wrong options for arg %d with prefix %s", command.Name, otc.Arg, otc.Prefix)
-}
-
-// ExecTestCase tests the result of calling the exec func on a command
-type ExecTestCase struct {
-	Args    []string
-	Result  string
-	Success bool
-}
-
-func (etc ExecTestCase) Test(t *testing.T, command Command) {
-	r, s := command.Exec(etc.Args)
-	if assert.Equal(t, etc.Success, s, "command %s returned wrong success flag for args %v", command.Name, etc.Args) && etc.Success {
-		assert.Equal(t, etc.Result, r, "command %s returned wrong result for args %v", command.Name, etc.Args)
-	}
-}
 
 func TestRegisterCommand(t *testing.T) {
 	oldCommands := make([]Command, len(commands))
@@ -88,67 +58,61 @@ var allFilesLsResult = strings.Join(songFilesInDir("dir1"), "\n") + "\n" +
 	strings.Join(songFilesInDir("dir3"), "\n") + "\n" +
 	strings.Join(songFilesInDir(), "\n")
 
-var commandTesters = []struct {
-	command Command
-	testers []CommandTester
-	before  func()
-	after   func()
-}{
+var commandTesters = []testutil.CommandTesters{
 	{
-		command: helpCommand,
-		testers: []CommandTester{
-			OptionsTestCase{Prefix: "", Arg: 1, Result: []string{}},
-			OptionsTestCase{Prefix: "", Arg: 0, Result: []string{"clear", "exit", "help", "ls"}},
-			OptionsTestCase{Prefix: "he", Arg: 0, Result: []string{"clear", "exit", "help"}},
-			OptionsTestCase{Prefix: "ls", Arg: 0, Result: []string{"clear", "exit", "ls"}},
-			ExecTestCase{Args: []string{}, Success: true, Result: "help            retrieves help for a command\nls              lists all songs in the music (sub) directory\nclear           Clears the terminal\nexit            Closes the connection"},
-			ExecTestCase{Args: []string{"exit"}, Success: true, Result: "exit: Closes the connection\nexit"},
-			ExecTestCase{Args: []string{"clear"}, Success: true, Result: "clear: Clears the terminal\nclear"},
-			ExecTestCase{Args: []string{"non-existent"}, Success: true, Result: "Command 'non-existent' does not exist."},
-			ExecTestCase{Args: []string{helpCommand.Name}, Success: true, Result: helpCommand.Name + ": " + helpCommand.Info + "\n" + helpCommand.usage()},
-			ExecTestCase{Args: []string{lsCommand.Name}, Success: true, Result: lsCommand.Name + ": " + lsCommand.Info + "\n" + lsCommand.usage()},
+		Command: helpCommand,
+		Testers: []testutil.CommandTester{
+			testutil.OptionsTestCase{Prefix: "", Arg: 1, Result: []string{}},
+			testutil.OptionsTestCase{Prefix: "", Arg: 0, Result: []string{"clear", "exit", "help", "ls"}},
+			testutil.OptionsTestCase{Prefix: "he", Arg: 0, Result: []string{"clear", "exit", "help"}},
+			testutil.OptionsTestCase{Prefix: "ls", Arg: 0, Result: []string{"clear", "exit", "ls"}},
+			testutil.ExecTestCase{Args: []string{}, Success: true, Result: "help            retrieves help for a command\nls              lists all songs in the music (sub) directory\nclear           Clears the terminal\nexit            Closes the connection"},
+			testutil.ExecTestCase{Args: []string{"exit"}, Success: true, Result: "exit: Closes the connection\nexit"},
+			testutil.ExecTestCase{Args: []string{"clear"}, Success: true, Result: "clear: Clears the terminal\nclear"},
+			testutil.ExecTestCase{Args: []string{"non-existent"}, Success: true, Result: "Command 'non-existent' does not exist."},
+			testutil.ExecTestCase{Args: []string{helpCommand.Name}, Success: true, Result: helpCommand.Name + ": " + helpCommand.Info + "\n" + helpCommand.usage()},
+			testutil.ExecTestCase{Args: []string{lsCommand.Name}, Success: true, Result: lsCommand.Name + ": " + lsCommand.Info + "\n" + lsCommand.usage()},
 		},
 	},
 	{
-		before:  func() { playback.AudioDir = "_ls_test_files" },
-		command: lsCommand,
-		testers: []CommandTester{
-			OptionsTestCase{Prefix: "", Arg: 1, Result: []string{}},
-			OptionsTestCase{Prefix: "", Arg: 0, Result: []string{addPathSep("dir1"), addPathSep("dir2"), addPathSep("dir3")}},
-			OptionsTestCase{Prefix: "dir1", Arg: 0, Result: []string{addPathSep("dir1")}},
-			OptionsTestCase{Prefix: addPathSep("dir1"), Arg: 0, Result: []string{addPathSep("dir1", "subdir1"),
+		Before:  func() { playback.AudioDir = "_ls_test_files" },
+		Command: lsCommand,
+		Testers: []testutil.CommandTester{
+			testutil.OptionsTestCase{Prefix: "", Arg: 1, Result: []string{}},
+			testutil.OptionsTestCase{Prefix: "", Arg: 0, Result: []string{addPathSep("dir1"), addPathSep("dir2"), addPathSep("dir3")}},
+			testutil.OptionsTestCase{Prefix: "dir1", Arg: 0, Result: []string{addPathSep("dir1")}},
+			testutil.OptionsTestCase{Prefix: addPathSep("dir1"), Arg: 0, Result: []string{addPathSep("dir1", "subdir1"),
 				addPathSep("dir1", "subdir2"),
 				addPathSep("dir1", "subdir3")}},
-			OptionsTestCase{Prefix: "dir2", Arg: 0, Result: []string{addPathSep("dir2")}},
-			OptionsTestCase{Prefix: addPathSep("dir2"), Arg: 0, Result: []string{}},
-			ExecTestCase{Args: []string{addPathSep("non-existent", "directory")}, Success: true, Result: ""},
-			ExecTestCase{Args: []string{addPathSep("dir1", "subdir1")}, Success: true, Result: strings.Join(songFilesInDir("dir1", "subdir1"), "\n")},
-			ExecTestCase{Args: []string{addPathSep("dir1", "subdir2")}, Success: true, Result: strings.Join(songFilesInDir("dir1", "subdir2"), "\n")},
-			ExecTestCase{Args: []string{addPathSep("dir1", "subdir3")}, Success: true, Result: strings.Join(songFilesInDir("dir1", "subdir3"), "\n")},
-			ExecTestCase{Args: []string{addPathSep("dir1")}, Success: true, Result: strings.Join(songFilesInDir("dir1"), "\n") + "\n" +
+			testutil.OptionsTestCase{Prefix: "dir2", Arg: 0, Result: []string{addPathSep("dir2")}},
+			testutil.OptionsTestCase{Prefix: addPathSep("dir2"), Arg: 0, Result: []string{}},
+			testutil.ExecTestCase{Args: []string{addPathSep("non-existent", "directory")}, Success: true, Result: ""},
+			testutil.ExecTestCase{Args: []string{addPathSep("dir1", "subdir1")}, Success: true, Result: strings.Join(songFilesInDir("dir1", "subdir1"), "\n")},
+			testutil.ExecTestCase{Args: []string{addPathSep("dir1", "subdir2")}, Success: true, Result: strings.Join(songFilesInDir("dir1", "subdir2"), "\n")},
+			testutil.ExecTestCase{Args: []string{addPathSep("dir1", "subdir3")}, Success: true, Result: strings.Join(songFilesInDir("dir1", "subdir3"), "\n")},
+			testutil.ExecTestCase{Args: []string{addPathSep("dir1")}, Success: true, Result: strings.Join(songFilesInDir("dir1"), "\n") + "\n" +
 				strings.Join(songFilesInDir("dir1", "subdir1"), "\n") + "\n" +
 				strings.Join(songFilesInDir("dir1", "subdir2"), "\n") + "\n" +
 				strings.Join(songFilesInDir("dir1", "subdir3"), "\n")},
-			ExecTestCase{Args: []string{addPathSep("dir2")}, Success: true, Result: strings.Join(songFilesInDir("dir2"), "\n")},
-			ExecTestCase{Args: []string{addPathSep("dir3")}, Success: true, Result: strings.Join(songFilesInDir("dir3"), "\n")},
-			ExecTestCase{Args: []string{addPathSep("")}, Success: true, Result: allFilesLsResult},
-			ExecTestCase{Args: []string{""}, Success: true, Result: allFilesLsResult},
-			ExecTestCase{Args: []string{}, Success: true, Result: allFilesLsResult},
+			testutil.ExecTestCase{Args: []string{addPathSep("dir2")}, Success: true, Result: strings.Join(songFilesInDir("dir2"), "\n")},
+			testutil.ExecTestCase{Args: []string{addPathSep("dir3")}, Success: true, Result: strings.Join(songFilesInDir("dir3"), "\n")},
+			testutil.ExecTestCase{Args: []string{addPathSep("")}, Success: true, Result: allFilesLsResult},
+			testutil.ExecTestCase{Args: []string{""}, Success: true, Result: allFilesLsResult},
+			testutil.ExecTestCase{Args: []string{}, Success: true, Result: allFilesLsResult},
+		},
+	},
+	{
+		Command: Command{},
+		Testers: []testutil.CommandTester{
+			testutil.OptionsTestCase{Prefix: "", Arg: 0, Result: []string{}},
+			testutil.OptionsTestCase{Prefix: "", Arg: 1, Result: []string{}},
 		},
 	},
 }
 
 func TestCommand_OptionsAndExec(t *testing.T) {
 	for _, testers := range commandTesters {
-		if testers.before != nil {
-			testers.before()
-		}
-		for _, tester := range testers.testers {
-			tester.Test(t, testers.command)
-		}
-		if testers.after != nil {
-			testers.after()
-		}
+		testers.Test(t)
 	}
 }
 

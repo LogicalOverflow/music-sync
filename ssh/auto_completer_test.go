@@ -137,7 +137,7 @@ func TestSshAutoCompleter_commandArgOptionsWithPrefix(t *testing.T) {
 
 	autoCompleter := sshAutoCompleter{}
 	var options []string
-	testCmd := Command{Name: "test-command", Options: func(string, int) []string { return options }}
+	testCmd := Command{Name: "test-command", OptionsFunc: func(string, int) []string { return options }}
 	RegisterCommand(testCmd)
 
 	for _, c := range commandArgOptionsWithPrefixCases {

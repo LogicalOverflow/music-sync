@@ -31,10 +31,27 @@ type Command struct {
 	Info  string // Info contains information about what the command does
 	// Exec runs the command. It is passed the arguments as a string slice.
 	// If it returns false, a usage message is printed, otherwise the returned string is printed
-	Exec func([]string) (string, bool)
-	// Options (optional) is used for auto completion. It is passed a prefix and the number of the argument and should
+	ExecFunc func(args []string) (string, bool)
+	// OptionsFunc (optional) is used for auto completion. It is passed a prefix and the number of the argument and should
 	// return all possible completion options
-	Options func(prefix string, arg int) []string
+	OptionsFunc func(prefix string, arg int) []string
+}
+
+// Exec executes ExecFunc
+func (command Command) Exec(args []string) (string, bool) {
+	return command.ExecFunc(args)
+}
+
+// Options executes OptionsFunc (if provided) or returns []string{}
+func (command Command) Options(prefix string, arg int) []string {
+	if command.OptionsFunc == nil {
+		return []string{}
+	}
+	return command.OptionsFunc(prefix, arg)
+}
+
+func (command Command) GetName() string {
+	return command.Name
 }
 
 func (command Command) usage() string {
@@ -57,7 +74,7 @@ var helpCommand = Command{
 	Name:  "help",
 	Usage: "[command name]",
 	Info:  "retrieves help for a command",
-	Exec: func(args []string) (string, bool) {
+	ExecFunc: func(args []string) (string, bool) {
 		if len(args) == 0 {
 			usages := make([]string, 0, len(commands))
 			for _, c := range commands {
@@ -90,7 +107,7 @@ var helpCommand = Command{
 		}
 		return target.Name + ": " + target.Info + "\n" + target.usage(), true
 	},
-	Options: func(prefix string, arg int) []string {
+	OptionsFunc: func(prefix string, arg int) []string {
 		if arg != 0 {
 			return []string{}
 		}
@@ -108,7 +125,7 @@ var lsCommand = Command{
 	Name:  "ls",
 	Usage: "[sub directory]",
 	Info:  "lists all songs in the music (sub) directory",
-	Exec: func(args []string) (string, bool) {
+	ExecFunc: func(args []string) (string, bool) {
 		subDir := ""
 		if 0 < len(args) {
 			subDir = args[0]
@@ -116,7 +133,7 @@ var lsCommand = Command{
 		songs := util.FilterSongs(util.ListAllFiles(playback.AudioDir, subDir))
 		return strings.Join(songs, "\n"), true
 	},
-	Options: func(prefix string, arg int) []string {
+	OptionsFunc: func(prefix string, arg int) []string {
 		if arg != 0 {
 			return []string{}
 		}
