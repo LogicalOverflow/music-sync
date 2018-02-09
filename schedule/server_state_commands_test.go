@@ -3,6 +3,7 @@ package schedule
 import (
 	"github.com/LogicalOverflow/music-sync/comm"
 	"github.com/LogicalOverflow/music-sync/playback"
+	"github.com/LogicalOverflow/music-sync/ssh"
 	"github.com/LogicalOverflow/music-sync/testutil"
 	"github.com/golang/protobuf/proto"
 	"github.com/stretchr/testify/assert"
@@ -150,42 +151,37 @@ func TestServerState_volumeCommand(t *testing.T) {
 }
 
 func TestServerState_pauseCommand(t *testing.T) {
-	ss := newTestServerState([]string{}, true)
-
-	cmd := ss.pauseCommand()
-	assert.NotNil(t, cmd, "serverState pauseCommand is nil")
-
-	ct := testutil.CommandTesters{
-		Command: cmd,
-		Testers: []testutil.CommandTester{
-			testutil.ExecTestCase{Args: []string{}, Result: "playback paused", Success: true},
-		},
-	}
-
-	ct.Test(t)
-
-	assert.False(t, ss.playlist.Playing(), "serverState pauseCommand did not pause playback")
+	testServerStatePauseOrResumeCommand(t, false)
 }
 
 func TestServerState_resumeCommand(t *testing.T) {
-	ss := newTestServerState([]string{}, false)
+	testServerStatePauseOrResumeCommand(t, true)
+}
 
-	cmd := ss.resumeCommand()
-	assert.NotNil(t, cmd, "serverState resumeCommand is nil")
+func testServerStatePauseOrResumeCommand(t *testing.T, playing bool) {
+	ss := newTestServerState([]string{}, !playing)
+
+	var cmd ssh.Command
+	var key string
+	if playing {
+		key = "resume"
+		cmd = ss.resumeCommand()
+	} else {
+		key = "pause"
+		cmd = ss.pauseCommand()
+	}
+	assert.NotNil(t, cmd, "serverState %sCommand is nil", key)
 
 	ct := testutil.CommandTesters{
 		Command: cmd,
-		Testers: []testutil.CommandTester{
-			testutil.ExecTestCase{Args: []string{}, Result: "playback resumed", Success: true},
-		},
+		Testers: []testutil.CommandTester{testutil.ExecTestCase{Args: []string{}, Result: "playback " + key + "d", Success: true}},
 	}
-
 	ct.Test(t)
 
-	assert.True(t, ss.playlist.Playing(), "serverState resumeCommand did not resume playback")
+	assert.Equal(t, playing, ss.playlist.Playing(), "serverState %sCommand did not resume playback", key)
 }
 
-func TestSServerState_playbackSetCommand(t *testing.T) {
+func TestServerState_playbackSetCommand(t *testing.T) {
 	ss := serverState{}
 
 	pause := ss.pauseCommand()
