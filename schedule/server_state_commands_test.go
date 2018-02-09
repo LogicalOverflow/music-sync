@@ -93,6 +93,9 @@ func TestServerState_queueCommand(t *testing.T) {
 			playback.AudioDir = path.Join("_queue_test_files")
 		},
 		testers: []CommandTester{
+			OptionsTestCase{Prefix: "", Arg: 1, Result: []string{}},
+			OptionsTestCase{Prefix: "song", Arg: 0, Result: []string{"song1.mp3", "song2.mp3", "song3.mp3"}},
+			OptionsTestCase{Prefix: "dir3", Arg: 0, Result: []string{"dir3" + pathSeparator + "song1.mp3", "dir3" + pathSeparator + "song2.mp3", "dir3" + pathSeparator + "song3.mp3"}},
 			ExecTestCase{Args: []string{}, Result: "", Success: false},
 			ExecTestCase{Args: []string{"non-existent.mp3"}, Result: "no song matches the glob pattern non-existent.mp3", Success: true},
 			ExecTestCase{Args: []string{"song1.mp3"}, Result: "1 song(s) added to playlist: song1.mp3", Success: true},
