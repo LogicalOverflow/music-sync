@@ -54,7 +54,9 @@ func run(ctx *cli.Context) error {
 	return nil
 }
 
-type playerPackageHandler struct{}
+type playerPackageHandler struct {
+	comm.BaseTypedPackageHandler
+}
 
 func (c playerPackageHandler) HandleTimeSyncResponse(tsr *comm.TimeSyncResponse, _ net.Conn) {
 	clientRecv := timing.GetRawTime()
@@ -70,13 +72,6 @@ func (c playerPackageHandler) HandleSetVolumeRequest(svr *comm.SetVolumeRequest,
 func (c playerPackageHandler) HandlePingMessage(_ *comm.PingMessage, conn net.Conn) {
 	comm.PingHandler(conn)
 }
-
-func (c playerPackageHandler) HandleTimeSyncRequest(*comm.TimeSyncRequest, net.Conn)                 {}
-func (c playerPackageHandler) HandlePongMessage(*comm.PongMessage, net.Conn)                         {}
-func (c playerPackageHandler) HandleSubscribeChannelRequest(*comm.SubscribeChannelRequest, net.Conn) {}
-func (c playerPackageHandler) HandleNewSongInfo(*comm.NewSongInfo, net.Conn)                         {}
-func (c playerPackageHandler) HandleChunkInfo(*comm.ChunkInfo, net.Conn)                             {}
-func (c playerPackageHandler) HandlePauseInfo(*comm.PauseInfo, net.Conn)                             {}
 
 func newPlayerPackageHandler() comm.TypedPackageHandler {
 	return comm.TypedPackageHandler{TypedPackageHandlerInterface: playerPackageHandler{}}

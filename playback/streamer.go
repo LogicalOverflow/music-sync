@@ -13,14 +13,12 @@ type timedSample struct {
 }
 
 type timedMultiStreamer struct {
-	format         beep.Format
-	chunks         []*queuedChunk
-	background     beep.Streamer
-	offset         int64
-	sampleDuration int64
-	maxCorrection  int
-	samples        *timedSampleQueue
-	syncing        bool
+	format     beep.Format
+	chunks     []*queuedChunk
+	background beep.Streamer
+	offset     int64
+	samples    *timedSampleQueue
+	syncing    bool
 }
 
 func (tms *timedMultiStreamer) Stream(samples [][2]float64) {

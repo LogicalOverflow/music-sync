@@ -128,6 +128,25 @@ func TestSamplesToAudioBuf(t *testing.T) {
 	volume = oldVolume
 }
 
+func TestInitStreamer(t *testing.T) {
+	oldFormat := format
+	oldStreamer := streamer
+	format = beep.Format{SampleRate: 16}
+	streamer = nil
+	initStreamer()
+	assert.NotNil(t, streamer, "initStreamer did not set streamer")
+	assert.Equal(t, format, streamer.format, "initStreamer did not set streamer.format correctly")
+	assert.Zero(t, len(streamer.chunks), "initStreamer did not init streamer.chunks correctly")
+	assert.NotNil(t, streamer.background, "initStreamer did not set streamer.background")
+	assert.Zero(t, streamer.offset, "initStreamer did not init streamer.offset correctly")
+	assert.Equal(t, 32, streamer.samples.Cap(), "initStreamer did not init streamer.samples with the correct capacity")
+	assert.Zero(t, streamer.samples.Len(), "initStreamer did not init streamer.samples as empty")
+	assert.True(t, streamer.syncing, "initStreamer did not set streamer.syncing correctly")
+
+	format = oldFormat
+	streamer = oldStreamer
+}
+
 func TestConvertSampleToBytes(t *testing.T) {
 	for i := -32768; i < 32767; i++ {
 		el, eh := byte(i), byte(i>>8)

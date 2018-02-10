@@ -11,6 +11,20 @@ type TypedPackageHandler struct {
 	TypedPackageHandlerInterface
 }
 
+// BaseTypedPackageHandler implements all TypedPackageHandlerInterface methods without doing anything
+type BaseTypedPackageHandler struct{}
+
+func (BaseTypedPackageHandler) HandleTimeSyncRequest(*TimeSyncRequest, net.Conn)                 {}
+func (BaseTypedPackageHandler) HandleTimeSyncResponse(*TimeSyncResponse, net.Conn)               {}
+func (BaseTypedPackageHandler) HandleQueueChunkRequest(*QueueChunkRequest, net.Conn)             {}
+func (BaseTypedPackageHandler) HandlePingMessage(*PingMessage, net.Conn)                         {}
+func (BaseTypedPackageHandler) HandlePongMessage(*PongMessage, net.Conn)                         {}
+func (BaseTypedPackageHandler) HandleSetVolumeRequest(*SetVolumeRequest, net.Conn)               {}
+func (BaseTypedPackageHandler) HandleSubscribeChannelRequest(*SubscribeChannelRequest, net.Conn) {}
+func (BaseTypedPackageHandler) HandleNewSongInfo(*NewSongInfo, net.Conn)                         {}
+func (BaseTypedPackageHandler) HandleChunkInfo(*ChunkInfo, net.Conn)                             {}
+func (BaseTypedPackageHandler) HandlePauseInfo(*PauseInfo, net.Conn)                             {}
+
 // TypedPackageHandlerInterface has methods to handle all packages received
 type TypedPackageHandlerInterface interface {
 	HandleTimeSyncRequest(*TimeSyncRequest, net.Conn)
@@ -54,6 +68,7 @@ func (t TypedPackageHandler) Handle(message proto.Message, sender net.Conn) {
 // TODO: move this is the server cmd?
 
 type serverPackageHandler struct {
+	BaseTypedPackageHandler
 	sender *multiMessageSender
 }
 
@@ -72,16 +87,8 @@ func (s serverPackageHandler) HandleSubscribeChannelRequest(scr *SubscribeChanne
 
 func (s serverPackageHandler) HandlePingMessage(_ *PingMessage, c net.Conn) { PingHandler(c) }
 
-func (s serverPackageHandler) HandleTimeSyncResponse(*TimeSyncResponse, net.Conn)   {}
-func (s serverPackageHandler) HandleQueueChunkRequest(*QueueChunkRequest, net.Conn) {}
-func (s serverPackageHandler) HandlePongMessage(*PongMessage, net.Conn)             {}
-func (s serverPackageHandler) HandleSetVolumeRequest(*SetVolumeRequest, net.Conn)   {}
-func (s serverPackageHandler) HandleNewSongInfo(*NewSongInfo, net.Conn)             {}
-func (s serverPackageHandler) HandleChunkInfo(*ChunkInfo, net.Conn)                 {}
-func (s serverPackageHandler) HandlePauseInfo(*PauseInfo, net.Conn)                 {}
-
 func newServerPackageHandler(sender *multiMessageSender) TypedPackageHandler {
-	return TypedPackageHandler{serverPackageHandler{sender: sender}}
+	return TypedPackageHandler{TypedPackageHandlerInterface: serverPackageHandler{sender: sender}}
 }
 
 // PingHandler handle a PingMessage

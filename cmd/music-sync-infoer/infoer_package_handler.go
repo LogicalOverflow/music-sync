@@ -9,12 +9,14 @@ import (
 )
 
 type infoerPackageHandler struct {
+	comm.BaseTypedPackageHandler
 }
 
 func (i *infoerPackageHandler) HandleTimeSyncResponse(tsr *comm.TimeSyncResponse, _ net.Conn) {
 	clientRecv := timing.GetRawTime()
 	timing.UpdateOffset(tsr.ClientSendTime, tsr.ServerRecvTime, tsr.ServerSendTime, clientRecv)
 }
+
 func (i *infoerPackageHandler) HandleNewSongInfo(newSongInfo *comm.NewSongInfo, _ net.Conn) {
 	currentState.SongsMutex.Lock()
 	defer currentState.SongsMutex.Unlock()
@@ -43,6 +45,7 @@ func (i *infoerPackageHandler) HandleNewSongInfo(newSongInfo *comm.NewSongInfo, 
 	})
 	sort.Sort(songsByStartIndex(currentState.Songs))
 }
+
 func (i *infoerPackageHandler) HandleChunkInfo(chunkInfo *comm.ChunkInfo, _ net.Conn) {
 	currentState.ChunksMutex.Lock()
 	defer currentState.ChunksMutex.Unlock()
@@ -53,6 +56,7 @@ func (i *infoerPackageHandler) HandleChunkInfo(chunkInfo *comm.ChunkInfo, _ net.
 	})
 	sort.Sort(chunksByStartIndex(currentState.Chunks))
 }
+
 func (i *infoerPackageHandler) HandlePauseInfo(pauseInfo *comm.PauseInfo, _ net.Conn) {
 	currentState.PausesMutex.Lock()
 	defer currentState.PausesMutex.Unlock()
@@ -62,18 +66,13 @@ func (i *infoerPackageHandler) HandlePauseInfo(pauseInfo *comm.PauseInfo, _ net.
 	})
 	sort.Sort(pauseByToggleIndex(currentState.Pauses))
 }
+
 func (i *infoerPackageHandler) HandleSetVolumeRequest(svr *comm.SetVolumeRequest, _ net.Conn) {
 	currentState.Volume = svr.Volume
 }
 
 func (i *infoerPackageHandler) HandlePingMessage(_ *comm.PingMessage, conn net.Conn) {
 	comm.PingHandler(conn)
-}
-
-func (i *infoerPackageHandler) HandleQueueChunkRequest(*comm.QueueChunkRequest, net.Conn) {}
-func (i *infoerPackageHandler) HandleTimeSyncRequest(*comm.TimeSyncRequest, net.Conn)     {}
-func (i *infoerPackageHandler) HandlePongMessage(*comm.PongMessage, net.Conn)             {}
-func (i *infoerPackageHandler) HandleSubscribeChannelRequest(*comm.SubscribeChannelRequest, net.Conn) {
 }
 
 // NewPlayerPackageHandler returns the TypedPackageHandler used by players

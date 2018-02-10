@@ -87,7 +87,7 @@ func Init(sampleRate int) error {
 		return fmt.Errorf("failed to initialize speaker: %v", err)
 	}
 	player.SetUnderrunCallback(func() { logger.Warn("player is underrunning") })
-	initStreamer(sampleRate)
+	initStreamer()
 	go playLoop()
 	go streamer.ReadChunks()
 	logger.Infof("playback initialized")
@@ -95,16 +95,14 @@ func Init(sampleRate int) error {
 	return nil
 }
 
-func initStreamer(sampleRate int) {
+func initStreamer() {
 	streamer = &timedMultiStreamer{
-		format:         format,
-		chunks:         make([]*queuedChunk, 0),
-		background:     beep.Silence(-1),
-		offset:         0,
-		sampleDuration: int64(format.SampleRate.D(1) / time.Nanosecond),
-		maxCorrection:  10,
-		samples:        newTimedSampleQueue(2 * sampleRate),
-		syncing:        true,
+		format:     format,
+		chunks:     make([]*queuedChunk, 0),
+		background: beep.Silence(-1),
+		offset:     0,
+		samples:    newTimedSampleQueue(2 * int(format.SampleRate)),
+		syncing:    true,
 	}
 }
 
