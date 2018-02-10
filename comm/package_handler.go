@@ -14,16 +14,35 @@ type TypedPackageHandler struct {
 // BaseTypedPackageHandler implements all TypedPackageHandlerInterface methods without doing anything
 type BaseTypedPackageHandler struct{}
 
-func (BaseTypedPackageHandler) HandleTimeSyncRequest(*TimeSyncRequest, net.Conn)                 {}
-func (BaseTypedPackageHandler) HandleTimeSyncResponse(*TimeSyncResponse, net.Conn)               {}
-func (BaseTypedPackageHandler) HandleQueueChunkRequest(*QueueChunkRequest, net.Conn)             {}
-func (BaseTypedPackageHandler) HandlePingMessage(*PingMessage, net.Conn)                         {}
-func (BaseTypedPackageHandler) HandlePongMessage(*PongMessage, net.Conn)                         {}
-func (BaseTypedPackageHandler) HandleSetVolumeRequest(*SetVolumeRequest, net.Conn)               {}
+// HandleTimeSyncRequest is called to handle a TimeSyncRequest
+func (BaseTypedPackageHandler) HandleTimeSyncRequest(*TimeSyncRequest, net.Conn) {}
+
+// HandleTimeSyncResponse is called to handle a TimeSyncResponse
+func (BaseTypedPackageHandler) HandleTimeSyncResponse(*TimeSyncResponse, net.Conn) {}
+
+// HandleQueueChunkRequest is called to handle a QueueChunkRequest
+func (BaseTypedPackageHandler) HandleQueueChunkRequest(*QueueChunkRequest, net.Conn) {}
+
+// HandlePingMessage is called to handle a PingMessage
+func (BaseTypedPackageHandler) HandlePingMessage(*PingMessage, net.Conn) {}
+
+// HandlePongMessage is called to handle a PongMessage
+func (BaseTypedPackageHandler) HandlePongMessage(*PongMessage, net.Conn) {}
+
+// HandleSetVolumeRequest is called to handle a SetVolumeRequest
+func (BaseTypedPackageHandler) HandleSetVolumeRequest(*SetVolumeRequest, net.Conn) {}
+
+// HandleSubscribeChannelRequest is called to handle a SubscribeChannelRequest
 func (BaseTypedPackageHandler) HandleSubscribeChannelRequest(*SubscribeChannelRequest, net.Conn) {}
-func (BaseTypedPackageHandler) HandleNewSongInfo(*NewSongInfo, net.Conn)                         {}
-func (BaseTypedPackageHandler) HandleChunkInfo(*ChunkInfo, net.Conn)                             {}
-func (BaseTypedPackageHandler) HandlePauseInfo(*PauseInfo, net.Conn)                             {}
+
+// HandleNewSongInfo is called to handle NewSongInfo
+func (BaseTypedPackageHandler) HandleNewSongInfo(*NewSongInfo, net.Conn) {}
+
+// HandleChunkInfo is called to handle ChunkInfo
+func (BaseTypedPackageHandler) HandleChunkInfo(*ChunkInfo, net.Conn) {}
+
+// HandlePauseInfo is called to handle PauseInfo
+func (BaseTypedPackageHandler) HandlePauseInfo(*PauseInfo, net.Conn) {}
 
 // TypedPackageHandlerInterface has methods to handle all packages received
 type TypedPackageHandlerInterface interface {
