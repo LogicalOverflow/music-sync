@@ -1,11 +1,13 @@
 package playback
 
 import (
+	"context"
+	"github.com/faiface/beep"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
 
-func TestQueuedChunk_copySample(t *testing.T) {
+func TestQueuedChunk(t *testing.T) {
 	for i := 0; i < 16; i++ {
 		samples := createSampleSlice(1024*i, 1024)
 
@@ -33,4 +35,51 @@ func TestQueuedChunk_copySample(t *testing.T) {
 		assert.Equal(t, 1024, qs.pos, "last copySample (after drained) set the position wrong for the %d-th chunk", i+1)
 		assert.True(t, qs.drained(), "after last copySample (after drained), drained() returned false for the %d-th chunk", i+1)
 	}
+}
+
+func TestTimedMultiStream_Err(t *testing.T) {
+	tms := &timedMultiStreamer{}
+	assert.Nil(t, tms.Err(), "timedMultiStreamer Err returned not nil")
+}
+
+func TestTimedMultiStream_sampleDurationAndSampleCount(t *testing.T) {
+	tms := &timedMultiStreamer{format: beep.Format{SampleRate: 1000}}
+	for i := 1; i < 1e6; i *= 10 {
+		assert.Equal(t, int64(i*1e6), tms.samplesDuration(i), "timeDuration is wrong for 1 sample")
+		assert.Equal(t, i, tms.samplesCount(int64(i*1e6)), "timeDuration is wrong for 1 sample")
+	}
+}
+
+func TestTimedMultiStreamer_ReadChunks(t *testing.T) {
+	tms := &timedMultiStreamer{
+		format:  beep.Format{SampleRate: 1},
+		chunks:  make([]*queuedChunk, 0),
+		samples: newTimedSampleQueue(64),
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	go tms.ReadChunks(ctx)
+
+	tms.chunksMutex.Lock()
+	for i := 0; i < 16; i++ {
+		tms.chunks = append(tms.chunks, newTestChunk(128, i))
+	}
+	tms.chunksMutex.Unlock()
+
+	for i := 0; i < 2048; i++ {
+		sample, time := tms.samples.Remove()
+		assert.Equal(t, [2]float64{-float64(i), float64(i)}, sample, "timeDuration ReadChunks pushed wrong sample at index %d", i)
+		assert.Equal(t, int64(i*1e9), time, "timeDuration ReadChunks pushed wrong times at index %d", i)
+	}
+
+	cancel()
+}
+
+func newTestChunk(chunkSize, chunkNum int) *queuedChunk {
+	qc := &queuedChunk{
+		startTime: int64(chunkSize * chunkNum * 1e9),
+		samples:   createSampleSlice(chunkSize*chunkNum, chunkSize),
+		sampleN:   chunkSize,
+	}
+	return qc
 }

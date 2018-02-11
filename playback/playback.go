@@ -4,6 +4,7 @@ package playback
 //
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path"
@@ -53,7 +54,9 @@ func QueueChunk(startTime int64, chunkID int64, samples [][2]float64) {
 	logger.Debugf("queueing chunk %d at %d", chunkID, startTime)
 
 	q := newQueuedStream(startTime, samples)
+	streamer.chunksMutex.Lock()
 	streamer.chunks = append(streamer.chunks, q)
+	streamer.chunksMutex.Unlock()
 	logger.Debugf("chunk %d queued at %d", chunkID, startTime)
 }
 
@@ -89,7 +92,7 @@ func Init(sampleRate int) error {
 	player.SetUnderrunCallback(func() { logger.Warn("player is underrunning") })
 	initStreamer()
 	go playLoop()
-	go streamer.ReadChunks()
+	go streamer.ReadChunks(context.Background())
 	logger.Infof("playback initialized")
 
 	return nil

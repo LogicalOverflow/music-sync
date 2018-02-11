@@ -1,9 +1,11 @@
 package playback
 
 import (
+	"context"
 	"github.com/LogicalOverflow/music-sync/timing"
 	"github.com/faiface/beep"
 	"math"
+	"sync"
 	"time"
 )
 
@@ -13,12 +15,13 @@ type timedSample struct {
 }
 
 type timedMultiStreamer struct {
-	format     beep.Format
-	chunks     []*queuedChunk
-	background beep.Streamer
-	offset     int64
-	samples    *timedSampleQueue
-	syncing    bool
+	format      beep.Format
+	chunks      []*queuedChunk
+	chunksMutex sync.RWMutex
+	background  beep.Streamer
+	offset      int64
+	samples     *timedSampleQueue
+	syncing     bool
 }
 
 func (tms *timedMultiStreamer) Stream(samples [][2]float64) {
@@ -74,16 +77,26 @@ func (tms *timedMultiStreamer) streamSync(samples [][2]float64, now int64) (n in
 	}
 }
 
-func (tms *timedMultiStreamer) ReadChunks() {
+func (tms *timedMultiStreamer) ReadChunks(ctx context.Context) {
+readLoop:
 	for {
 		if 0 < len(tms.chunks) {
+			tms.chunksMutex.RLock()
 			st := tms.chunks[0].startTime
 			for i, s := range tms.chunks[0].samples {
 				tms.samples.Add(s, st+tms.samplesDuration(i))
 			}
+			tms.chunksMutex.RUnlock()
+			tms.chunksMutex.Lock()
 			tms.chunks = tms.chunks[1:]
+			tms.chunksMutex.Unlock()
 		} else {
 			time.Sleep(time.Millisecond)
+		}
+		select {
+		case <-ctx.Done():
+			break readLoop
+		default:
 		}
 	}
 }
