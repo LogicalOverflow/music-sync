@@ -3,6 +3,7 @@ package playback
 import (
 	"context"
 	"github.com/LogicalOverflow/music-sync/timing"
+	"github.com/LogicalOverflow/music-sync/util"
 	"github.com/faiface/beep"
 	"math"
 	"sync"
@@ -78,8 +79,7 @@ func (tms *timedMultiStreamer) streamSync(samples [][2]float64, now int64) (n in
 }
 
 func (tms *timedMultiStreamer) ReadChunks(ctx context.Context) {
-readLoop:
-	for {
+	for !util.IsCanceled(ctx) {
 		if 0 < len(tms.chunks) {
 			tms.chunksMutex.RLock()
 			st := tms.chunks[0].startTime
@@ -92,11 +92,6 @@ readLoop:
 			tms.chunksMutex.Unlock()
 		} else {
 			time.Sleep(time.Millisecond)
-		}
-		select {
-		case <-ctx.Done():
-			break readLoop
-		default:
 		}
 	}
 }
