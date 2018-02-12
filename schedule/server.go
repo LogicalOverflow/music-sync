@@ -1,6 +1,7 @@
 package schedule
 
 import (
+	"context"
 	"github.com/LogicalOverflow/music-sync/comm"
 	"github.com/LogicalOverflow/music-sync/metadata"
 	"github.com/LogicalOverflow/music-sync/playback"
@@ -22,7 +23,7 @@ func Server(sender comm.MessageSender) {
 
 	comm.NewClientHandler = ss.createClientHandler()
 
-	go ss.playlist.StreamLoop()
+	go ss.playlist.StreamLoop(context.Background())
 
 	ss.playlist.SetNewSongHandler(ss.createNewSongHandler())
 	ss.playlist.SetPauseToggleHandler(ss.createPauseToggleHandler())

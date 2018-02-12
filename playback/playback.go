@@ -6,6 +6,7 @@ package playback
 import (
 	"context"
 	"fmt"
+	"github.com/LogicalOverflow/music-sync/util"
 	"os"
 	"path"
 	"time"
@@ -91,7 +92,7 @@ func Init(sampleRate int) error {
 	}
 	player.SetUnderrunCallback(func() { logger.Warn("player is underrunning") })
 	initStreamer()
-	go playLoop()
+	go playLoop(context.Background())
 	go streamer.ReadChunks(context.Background())
 	logger.Infof("playback initialized")
 
@@ -115,12 +116,12 @@ func SetVolume(v float64) {
 	logger.Infof("volume set to %.3f", v)
 }
 
-func playLoop() {
+func playLoop(ctx context.Context) {
 	numBytes := bufferSize * format.NumChannels * format.Precision
 	samples := make([][2]float64, bufferSize)
 	buf := make([]byte, numBytes)
 
-	for {
+	for !util.IsCanceled(ctx) {
 		streamer.Stream(samples)
 		samplesToAudioBuf(samples, buf)
 		player.Write(buf)

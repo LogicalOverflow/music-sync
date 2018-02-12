@@ -1,6 +1,8 @@
 package playback
 
 import (
+	"context"
+	"github.com/LogicalOverflow/music-sync/util"
 	"github.com/faiface/beep"
 	"math"
 	"sync"
@@ -33,9 +35,11 @@ type Playlist struct {
 }
 
 // StreamLoop reads the samples of the song into the internal buffer.
-// This method blocks forever and must be called exactly once before streaming from the playlist.
-func (pl *Playlist) StreamLoop() {
-	for {
+// This method blocks until the passed context is canceled.
+// It must be called once before streaming from the playlist and must not be called again before the returning after
+// the context was canceled.
+func (pl *Playlist) StreamLoop(ctx context.Context) {
+	for !util.IsCanceled(ctx) {
 		filename := pl.nextSong()
 		if filename == "" {
 			pl.pushNanSamples(noSongNanSampleCount)
