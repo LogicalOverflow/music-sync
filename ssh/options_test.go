@@ -9,11 +9,13 @@ import (
 	"github.com/stretchr/testify/require"
 	"net"
 	"path"
+	"sync"
 	"testing"
 )
 
 type tCtx struct {
 	context.Context
+	l             *sync.Mutex
 	user          string
 	sessionID     string
 	clientVersion string
@@ -31,6 +33,8 @@ func (t tCtx) RemoteAddr() net.Addr            { return t.remoteAddr }
 func (t tCtx) LocalAddr() net.Addr             { return t.localAddr }
 func (t tCtx) Permissions() *ssh.Permissions   { return t.permissions }
 func (t tCtx) SetValue(key, value interface{}) {}
+func (t tCtx) Lock()                           { t.l.Lock() }
+func (t tCtx) Unlock()                         { t.l.Unlock() }
 
 var testPubKeyBytes, pubKeyBytesErr = base64.StdEncoding.DecodeString("AAAAB3NzaC1kc3MAAACBAPZ53Jl0pArkxTrx6kGTUB9FcE5luWaLowbkSybVG5GzqHKTFehDHTP6TQ5tZyRlG5nGeYJbjIbaQ8zALhu4Ubl2THxliFN8pdARSfK9pfThpV0AM1naYqo7qAx3o+6Jc85FZpnMqQckJCxejfeD2BFGJIwCE4D3UyZ5ZdNh4EtBAAAAFQCI/Q2U0TOYjc0noYnXB9DxEixJawAAAIBHVl7srtbQMAjnTN9vpQ4zaHS8XeroDreDW0TGtdBAezqMgWEURwfh32omnEEWct25PcHR2oUS/P6aHa4KPtytJiDGg45LeS14RN5HyKKNFQljGD1eL9Z7KtNoHJYLdzZBz2jgA2uqf1MSR6fRwbqxGYwCi/Bd/OtIgA/XqcUa8QAAAIEA0ct95BoR9+qBLqpwUvJSAPEP0wwQ88c0/YwyOte/sh9homF6qC3ky3XVB0CDImv2LO3GhWvaGtVoKj2WRqr68p3NC6Cy3gbpvcZzSqJJqGO0U2Ai0NoDT5A853oO8rOqVoshxGvG+nyyQ4WGXnxlO/8v5d9DZDWNklPR085qDIU=")
 var testPubKey, pubKeyErr = ssh.ParsePublicKey(testPubKeyBytes)

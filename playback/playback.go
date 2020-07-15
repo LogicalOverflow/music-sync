@@ -84,13 +84,15 @@ func Init(sampleRate int) error {
 	format = beep.Format{SampleRate: beep.SampleRate(sampleRate), NumChannels: 2, Precision: 2}
 
 	bufferSize = format.SampleRate.N(time.Second / 10)
-	player, err = oto.NewPlayer(int(format.SampleRate), format.NumChannels, format.Precision,
+	ctx, err := oto.NewContext(int(format.SampleRate), format.NumChannels, format.Precision,
 		format.NumChannels*format.Precision*bufferSize)
-
+	/* player, err = oto.NewPlayer(int(format.SampleRate), format.NumChannels, format.Precision,
+		format.NumChannels*format.Precision*bufferSize) */
 	if err != nil {
 		return fmt.Errorf("failed to initialize speaker: %v", err)
 	}
-	player.SetUnderrunCallback(func() { logger.Warn("player is underrunning") })
+	player = ctx.NewPlayer()
+	// player.SetUnderrunCallback(func() { logger.Warn("player is underrunning") })
 	initStreamer()
 	go playLoop(context.Background())
 	go streamer.ReadChunks(context.Background())

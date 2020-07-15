@@ -76,7 +76,7 @@ func TestQueueChunk(t *testing.T) {
 
 	var oldStreamer *timedMultiStreamer
 	if streamer != nil {
-		*oldStreamer = *streamer
+		oldStreamer = streamer
 	}
 	streamer = &timedMultiStreamer{chunks: make([]*queuedChunk, 0)}
 
@@ -104,7 +104,7 @@ func TestQueueChunk(t *testing.T) {
 	QueueChunk(startTime[0], 0, samples[0])
 
 	if oldStreamer != nil {
-		*streamer = *oldStreamer
+		streamer = oldStreamer
 	}
 }
 
